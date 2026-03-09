@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Dado Arcano</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0d0d0f;
+      --surface:    #111118;
+      --surface2:   #18182a;
+      --border:     #1e1e30;
+      --border2:    #2a2a42;
+      --accent:     #a78bfa;
+      --accent-btn: #7c3aed;
+      --accent-dim: rgba(167,139,250,0.10);
+      --accent-glo: rgba(167,139,250,0.28);
+      --gold:       #f59e0b;
+      --gold-dim:   rgba(245,158,11,0.12);
+      --red:        #ef4444;
+      --red-dim:    rgba(239,68,68,0.12);
+      --text:       #ece8f6;
+      --text-dim:   #5a5675;
+      --text-mute:  #2e2c42;
+    }
+
+    html { height: 100%; }
+
+    body {
+      height: 100dvh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 50% -10%, rgba(124,58,237,.06) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 80% 110%, rgba(124,58,237,.04) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .wrap {
+      max-width: 430px;
+      margin: 0 auto;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative; z-index: 1;
+      overflow: hidden;
+    }
+
+    /* ── HEADER ──────────────────────────────────────── */
+    header {
+      flex-shrink: 0;
+      padding: 26px 24px 12px;
+      text-align: center;
+    }
+    .hdr-rune {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic; font-size: 11px;
+      letter-spacing: 7px; color: var(--text-mute);
+      margin-bottom: 7px;
+    }
+    h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600; font-size: 32px;
+      letter-spacing: 6px; text-transform: uppercase; line-height: 1;
+    }
+    h1 em { font-style: normal; color: var(--accent); }
+    .hdr-rule {
+      width: 56px; height: 1px; margin: 10px auto 0;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    /* ── ACTION BAR ──────────────────────────────────── */
+
+    /* ── QUEUE AREA ──────────────────────────────────── */
+    .queue-area {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 4px 18px 0;
+      padding-bottom: calc(148px + env(safe-area-inset-bottom, 0px));
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .s-state { width: 100%; }
+    .hidden { display: none !important; }
+
+    /* ── EMPTY STATE ─────────────────────────────────── */
+    .s-empty {
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .empty-hint {
+      font-size: 10px; letter-spacing: 3px;
+      color: var(--text-mute); text-align: center;
+      text-transform: uppercase;
+      animation: hint-pulse 3s ease-in-out infinite;
+    }
+    @keyframes hint-pulse {
+      0%, 100% { opacity: 0.3; }
+      50%       { opacity: 0.65; }
+    }
+
+    /* ── QUEUE STATE ─────────────────────────────────── */
+    .chips-wrap {
+      display: flex; flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 0 16px;
+      min-height: 60px;
+    }
+    .chip {
+      display: flex; align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 8px 8px 8px 10px;
+      min-height: 44px;
+      user-select: none;
+    }
+    .chip-svg {
+      width: 20px; height: 20px;
+      flex-shrink: 0;
+      color: var(--text-dim);
+    }
+    .chip-lbl {
+      font-size: 10px; letter-spacing: 2px;
+      color: var(--text-dim);
+    }
+    .chip-rm {
+      background: none; border: none;
+      color: var(--text-mute);
+      font-size: 15px; line-height: 1;
+      cursor: pointer; padding: 2px 5px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: color .15s;
+      border-radius: 4px;
+    }
+    .chip-rm:active { color: var(--red); }
+
+    /* ── ROLAR BUTTON ────────────────────────────────── */
+    .btn-rolar {
+      width: 100%; padding: 18px;
+      background: var(--accent-btn);
+      border: none; border-radius: 14px;
+      color: #fff;
+      font-family: 'Space Mono', monospace;
+      font-size: 13px; font-weight: 700; letter-spacing: 7px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      opacity: 0; transform: translateY(8px);
+      transition: opacity .3s ease, transform .3s ease, background .15s, scale .1s;
+      pointer-events: none;
+      margin-bottom: 20px;
+      position: relative; overflow: hidden;
+    }
+    .btn-rolar.visible {
+      opacity: 1; transform: translateY(0);
+      pointer-events: auto;
+    }
+    .btn-rolar::after {
+      content: '';
+      position: absolute; top: 0; left: -100%;
+      width: 50%; height: 100%;
+      background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.14) 50%, transparent 100%);
+      animation: rolar-shine 3s ease-in-out 0.8s infinite;
+      pointer-events: none;
+    }
+    @keyframes rolar-shine {
+      0%        { left: -100%; }
+      35%, 100% { left: 150%; }
+    }
+    .btn-rolar:active { background: #6d28d9; transform: scale(.97); }
+
+    /* ── RESULT STATE ────────────────────────────────── */
+    .rcards {
+      display: flex; flex-wrap: wrap;
+      gap: 10px; justify-content: center;
+      padding: 12px 0 18px; width: 100%;
+    }
+    .rcard {
+      width: 80px; min-height: 90px;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 10px 4px 8px;
+      transition: border-color .25s, box-shadow .25s;
+    }
+    .rcard-die {
+      font-size: 8px; letter-spacing: 2px;
+      color: var(--text-mute); margin-bottom: 2px;
+    }
+    .rcard-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 34px; font-weight: 600;
+      color: var(--text-dim); line-height: 1;
+      transition: color .2s;
+      min-width: 1ch; text-align: center;
+    }
+    .rcard-badge {
+      font-size: 7px; letter-spacing: 1.5px;
+      height: 11px; margin-top: 5px;
+      opacity: 0; transition: opacity .3s;
+    }
+    .rcard.locked { border-color: var(--accent); }
+    .rcard.locked .rcard-num { color: var(--text); }
+    .rcard.crit {
+      border-color: var(--gold);
+      box-shadow: inset 0 0 12px var(--gold-dim);
+    }
+    .rcard.crit .rcard-num { color: var(--gold); }
+    .rcard.crit .rcard-badge { color: var(--gold); opacity: 1; }
+    .rcard.fail {
+      border-color: var(--red);
+      box-shadow: inset 0 0 12px var(--red-dim);
+    }
+    .rcard.fail .rcard-num { color: var(--red); }
+    .rcard.fail .rcard-badge { color: var(--red); opacity: 1; }
+    @keyframes lock-pulse {
+      0%   { transform: scale(1);    }
+      40%  { transform: scale(1.12); }
+      100% { transform: scale(1);    }
+    }
+    .rcard.pulsing { animation: lock-pulse .2s ease-out; }
+
+    /* ── TOTAL ───────────────────────────────────────── */
+    .total-blk {
+      text-align: center;
+      opacity: 0; pointer-events: none;
+      margin-bottom: 20px;
+    }
+    .total-blk.visible {
+      animation: fade-up .5s cubic-bezier(.34,1.4,.64,1) forwards;
+      pointer-events: auto;
+    }
+    .total-eye {
+      font-size: 9px; letter-spacing: 7px;
+      color: var(--text-dim); margin-bottom: 2px;
+    }
+    .total-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 96px; font-weight: 600;
+      line-height: .9; color: var(--accent);
+      text-shadow: 0 0 40px var(--accent-glo);
+    }
+    .total-rule {
+      width: 50px; height: 1px; margin: 14px auto 0;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    /* ── RESULT ACTIONS ──────────────────────────────── */
+    .result-actions {
+      display: flex; gap: 10px;
+      margin-bottom: 22px;
+      opacity: 0; pointer-events: none;
+    }
+    .result-actions.visible {
+      animation: fade-up .4s ease forwards;
+      animation-delay: .1s;
+      pointer-events: auto;
+    }
+    .btn-ghost {
+      flex: 1; padding: 12px;
+      background: none;
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      color: var(--text-dim);
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; letter-spacing: 2px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: border-color .18s, color .18s;
+      white-space: nowrap; text-align: center;
+      min-height: 44px;
+    }
+    .btn-ghost:active { border-color: var(--accent); color: var(--accent); }
+
+    /* ── HISTORY ─────────────────────────────────────── */
+    .history {
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+    }
+    .hist-label {
+      font-size: 8px; letter-spacing: 4px;
+      color: var(--text-mute); text-transform: uppercase;
+      text-align: center; margin-bottom: 8px;
+    }
+    .hist-row {
+      padding: 7px 0;
+      border-top: 1px solid rgba(255,255,255,0.04);
+      font-size: 9px; letter-spacing: .3px;
+      color: var(--text-mute); line-height: 1.6;
+      opacity: 0;
+      animation: hist-in .3s ease forwards;
+    }
+    .hist-row:first-child {
+      animation: hist-in-first .3s ease forwards;
+    }
+    @keyframes hist-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 0.45; transform: translateY(0); }
+    }
+    @keyframes hist-in-first {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hist-tag { color: rgba(167,139,250,0.65); }
+    .hist-total { color: var(--text-dim); font-weight: 700; }
+
+    /* ── LEGENDARY FLASH ─────────────────────────────── */
+    #legend-flash {
+      position: fixed; inset: 0;
+      background: rgba(245,158,11,0.13);
+      pointer-events: none; z-index: 200;
+      opacity: 0;
+    }
+    #legend-flash.go { animation: legend .6s ease-out forwards; }
+    @keyframes legend {
+      0%   { opacity: 0; }
+      20%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* ── DICE BAR ────────────────────────────────────── */
+    .dice-bar {
+      position: fixed; bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 100%; max-width: 430px;
+      background: rgba(11,11,14,0.97);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid rgba(167,139,250,0.14);
+      padding: 10px 12px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      z-index: 100;
+    }
+    .bar-row {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+    .bar-row-2 {
+      max-width: 75%;
+      margin: 0 auto;
+    }
+    .bar-die {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 0;
+      cursor: pointer; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      padding: 8px 6px;
+      flex: 1;
+      min-height: 72px;
+      justify-content: center;
+      border-radius: 10px;
+      opacity: 0; /* filled by entrance animation */
+    }
+    .bar-die:active { background: rgba(167,139,250,0.07); }
+    .bar-svg {
+      width: 36px; height: 36px;
+      color: var(--text-dim);
+      display: block;
+    }
+    .bar-lbl {
+      font-size: 13px;
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: rgba(167,139,250,0.9);
+      margin-top: 6px;
+    }
+    @keyframes bar-enter {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes bar-tap-anim {
+      0%   { transform: scale(1);    }
+      40%  { transform: scale(0.88); }
+      100% { transform: scale(1);    }
+    }
+    .bar-die.tapped { animation: bar-tap-anim .12s ease-out; }
+    @keyframes bar-shake {
+      0%, 100% { transform: translateX(-50%); }
+      20%, 60%  { transform: translateX(calc(-50% - 3px)); }
+      40%, 80%  { transform: translateX(calc(-50% + 3px)); }
+    }
+    .dice-bar.shake { animation: bar-shake .32s ease-out; }
+
+    /* ── SHARED KEYFRAMES ────────────────────────────── */
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="legend-flash" aria-hidden="true"></div>
+
+<div class="wrap">
+  <header>
+    <div class="hdr-rune">◆ &nbsp; arcano &nbsp; ◆</div>
+    <h1>DADO <em>ARCANO</em></h1>
+    <div class="hdr-rule"></div>
+  </header>
+
+  <div class="queue-area" id="queue-area">
+
+    <!-- EMPTY -->
+    <div class="s-state" id="s-empty">
+      <div class="s-empty">
+        <p class="empty-hint">selecione os dados abaixo</p>
+      </div>
+    </div>
+
+    <!-- QUEUE -->
+    <div class="s-state hidden" id="s-queue">
+      <div class="chips-wrap" id="chips-wrap"></div>
+      <button class="btn-rolar" id="btn-rolar" aria-label="Rolar dados selecionados">
+        ROLAR
+      </button>
+    </div>
+
+    <!-- RESULT -->
+    <div class="s-state hidden" id="s-result">
+      <div class="rcards" id="rcards"></div>
+      <div class="total-blk" id="total-blk">
+        <div class="total-eye">total</div>
+        <div class="total-num" id="total-num"></div>
+        <div class="total-rule"></div>
+      </div>
+      <div class="result-actions" id="result-actions">
+        <button class="btn-ghost" id="btn-nova-result" aria-label="Nova rolagem">← NOVA ROLAGEM</button>
+        <button class="btn-ghost" id="btn-reroll" aria-label="Rerolar mesmo combo">↺ REROLAR</button>
+      </div>
+    </div>
+
+    <!-- HISTORY (always in flow, hidden until populated) -->
+    <div class="history hidden" id="history">
+      <div class="hist-label">histórico</div>
+      <div id="hist-list"></div>
+    </div>
+
+  </div><!-- /queue-area -->
+</div><!-- /wrap -->
+
+<div class="dice-bar" id="dice-bar">
+  <div class="bar-row" id="bar-row-1"></div>
+  <div class="bar-row bar-row-2" id="bar-row-2"></div>
+</div>
+
+<script>
+'use strict';
+
+/* ── DICE DATA ───────────────────────────────────────── */
+const DICE = [
+  { id:'d4',   faces:4,   label:'D4'  },
+  { id:'d6',   faces:6,   label:'D6'  },
+  { id:'d8',   faces:8,   label:'D8'  },
+  { id:'d10',  faces:10,  label:'D10' },
+  { id:'d12',  faces:12,  label:'D12' },
+  { id:'d20',  faces:20,  label:'D20' },
+  { id:'d100', faces:100, label:'D100', step:10, minVal:10 },
+];
+
+/* ── SVG PATHS (viewBox 0 0 100 100) ────────────────── */
+const SVG = {
+  d4:
+    `<polygon points="50,8 92,78 8,78"/>
+     <line x1="50" y1="8"  x2="50" y2="78"/>
+     <line x1="8"  y1="78" x2="71" y2="43"/>
+     <line x1="92" y1="78" x2="29" y2="43"/>`,
+
+  d6:
+    `<polygon points="50,12 82,30 50,48 18,30"/>
+     <polygon points="18,30 50,48 50,86 18,68"/>
+     <polygon points="82,30 50,48 50,86 82,68"/>`,
+
+  d8:
+    `<polygon points="50,8 85,52 15,52"/>
+     <polygon points="50,92 85,52 15,52"/>
+     <line x1="50" y1="8"  x2="50" y2="52"/>
+     <line x1="50" y1="92" x2="50" y2="52"/>`,
+
+  d10:
+    `<line x1="50" y1="8"  x2="78" y2="38"/>
+     <line x1="50" y1="8"  x2="88" y2="58"/>
+     <line x1="50" y1="8"  x2="50" y2="68"/>
+     <line x1="50" y1="8"  x2="12" y2="58"/>
+     <line x1="50" y1="8"  x2="22" y2="38"/>
+     <polygon points="22,38 78,38 88,58 50,68 12,58"/>
+     <line x1="22" y1="38" x2="50" y2="92"/>
+     <line x1="78" y1="38" x2="50" y2="92"/>
+     <line x1="88" y1="58" x2="50" y2="92"/>
+     <line x1="50" y1="68" x2="50" y2="92"/>
+     <line x1="12" y1="58" x2="50" y2="92"/>`,
+
+  d12:
+    `<polygon points="50,8 72,14 88,32 88,58 72,76 50,82 28,76 12,58 12,32 28,14"/>
+     <polygon points="50,22 66,34 60,54 40,54 34,34"/>`,
+
+  d20:
+    `<polygon points="25,9 75,9 96,50 75,91 25,91 4,50"/>
+     <line x1="50" y1="9"  x2="4"  y2="50"/>
+     <line x1="50" y1="9"  x2="96" y2="50"/>
+     <line x1="50" y1="9"  x2="50" y2="91"/>
+     <line x1="50" y1="91" x2="25" y2="9"/>
+     <line x1="50" y1="91" x2="75" y2="9"/>
+     <line x1="4"  y1="50" x2="75" y2="91"/>
+     <line x1="96" y1="50" x2="25" y2="91"/>`,
+
+  d100:
+    `<circle cx="50" cy="50" r="40"/>
+     <circle cx="50" cy="50" r="28"/>
+     <line x1="50" y1="10" x2="50" y2="22"/>
+     <line x1="50" y1="78" x2="50" y2="90"/>
+     <line x1="10" y1="50" x2="22" y2="50"/>
+     <line x1="78" y1="50" x2="90" y2="50"/>
+     <line x1="22" y1="22" x2="30" y2="30"/>
+     <line x1="78" y1="22" x2="70" y2="30"/>
+     <line x1="22" y1="78" x2="30" y2="70"/>
+     <line x1="78" y1="78" x2="70" y2="70"/>`,
+};
+
+const SVG_ATTRS = 'viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"';
+
+/* ── STATE ───────────────────────────────────────────── */
+let appState      = 'empty'; // 'empty' | 'queue' | 'result'
+let queue         = [];      // [{uid, die}, ...]
+let lastQueue     = [];      // saved combo for REROLAR
+let rollHistory   = [];      // last 5 rolls
+let pendingTimers = [];
+let uidCounter    = 0;
+const MAX_QUEUE   = 10;
+
+/* ── HELPERS ─────────────────────────────────────────── */
+function rollSingle(die) {
+  if (die.step) return (Math.floor(Math.random() * (die.faces / die.step)) + 1) * die.step;
+  return Math.floor(Math.random() * die.faces) + 1;
+}
+
+/* ── SCREEN STATE ────────────────────────────────────── */
+function setAppState(s) {
+  appState = s;
+  document.getElementById('s-empty').classList.toggle('hidden', s !== 'empty');
+  document.getElementById('s-queue').classList.toggle('hidden', s !== 'queue');
+  document.getElementById('s-result').classList.toggle('hidden', s !== 'result');
+}
+
+/* ── QUEUE ───────────────────────────────────────────── */
+function addToQueue(die) {
+  if (queue.length >= MAX_QUEUE) { shakeBar(); return; }
+  queue.push({ uid: uidCounter++, die });
+  if (appState !== 'queue') setAppState('queue');
+  renderChips();
+}
+
+function removeFromQueue(uid) {
+  queue = queue.filter(item => item.uid !== uid);
+  if (queue.length === 0) setAppState('empty');
+  else renderChips();
+}
+
+function renderChips() {
+  const wrap = document.getElementById('chips-wrap');
+  wrap.innerHTML = '';
+  queue.forEach(item => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.innerHTML =
+      `<svg class="chip-svg" ${SVG_ATTRS}>${SVG[item.die.id]}</svg>` +
+      `<span class="chip-lbl">${item.die.label}</span>` +
+      `<button class="chip-rm" aria-label="Remover ${item.die.label}">×</button>`;
+    chip.querySelector('.chip-rm').addEventListener('click', () => removeFromQueue(item.uid));
+    wrap.appendChild(chip);
+  });
+  document.getElementById('btn-rolar').classList.toggle('visible', queue.length > 0);
+}
+
+/* ── DICE BAR ────────────────────────────────────────── */
+function shakeBar() {
+  const bar = document.getElementById('dice-bar');
+  bar.classList.remove('shake');
+  void bar.offsetWidth;
+  bar.classList.add('shake');
+  setTimeout(() => bar.classList.remove('shake'), 350);
+}
+
+function tapBarDie(el, die) {
+  el.classList.remove('tapped');
+  void el.offsetWidth;
+  el.classList.add('tapped');
+  setTimeout(() => el.classList.remove('tapped'), 130);
+
+  // If currently showing results, clear and start fresh queue
+  if (appState === 'result') {
+    pendingTimers.forEach(clearTimeout);
+    pendingTimers = [];
+    queue = [];
+    document.getElementById('total-blk').classList.remove('visible');
+    document.getElementById('result-actions').classList.remove('visible');
+  }
+  addToQueue(die);
+}
+
+function buildBar() {
+  // Row 1: first 4 dice (D4, D6, D8, D10)
+  // Row 2: remaining 3 dice (D12, D20, D100)
+  const row1 = document.getElementById('bar-row-1');
+  const row2 = document.getElementById('bar-row-2');
+
+  DICE.forEach((die, i) => {
+    const el = document.createElement('div');
+    el.className = 'bar-die';
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('aria-label', 'Adicionar ' + die.label);
+    el.innerHTML =
+      `<svg class="bar-svg" ${SVG_ATTRS}>${SVG[die.id]}</svg>` +
+      `<span class="bar-lbl">${die.label}</span>`;
+    el.addEventListener('click', () => tapBarDie(el, die));
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tapBarDie(el, die); }
+    });
+
+    (i < 4 ? row1 : row2).appendChild(el);
+
+    // Stagger entrance
+    setTimeout(() => {
+      el.style.animation = 'bar-enter 0.35s ease forwards';
+    }, i * 60);
+  });
+}
+
+/* ── ROLL ────────────────────────────────────────────── */
+function doRoll() {
+  if (queue.length === 0) return;
+  lastQueue = [...queue];
+  const results = queue.map(item => ({ die: item.die, val: rollSingle(item.die) }));
+
+  pendingTimers.forEach(clearTimeout);
+  pendingTimers = [];
+
+  setAppState('result');
+  document.getElementById('total-blk').classList.remove('visible');
+  document.getElementById('result-actions').classList.remove('visible');
+
+  showResults(results);
+}
+
+/* ── SLOT MACHINE ────────────────────────────────────── */
+const RAMP    = [40, 40, 40, 40, 60, 60, 90, 90, 130, 180, 240, 320, 420, 560];
+const STAGGER = 300;
+
+function showResults(results) {
+  const box = document.getElementById('rcards');
+  box.innerHTML = '';
+
+  const cards = results.map(r => {
+    const card = document.createElement('div');
+    card.className = 'rcard';
+    card.setAttribute('aria-label', r.die.label + ': processando');
+    card.innerHTML =
+      `<span class="rcard-die">${r.die.label}</span>` +
+      `<span class="rcard-num">·</span>` +
+      `<span class="rcard-badge" aria-live="polite"></span>`;
+    box.appendChild(card);
+    return card;
+  });
+
+  let lockedCount = 0;
+
+  cards.forEach((card, i) => {
+    const r       = results[i];
+    const numEl   = card.querySelector('.rcard-num');
+    const badgeEl = card.querySelector('.rcard-badge');
+
+    function runStep(step) {
+      if (step >= RAMP.length) {
+        // ── LOCK ────────────────────────────────────
+        numEl.textContent = r.val;
+        card.classList.add('locked');
+        card.setAttribute('aria-label', r.die.label + ': ' + r.val);
+
+        const maxVal = r.die.faces;
+        const minVal = r.die.minVal || 1;
+        if (r.val === maxVal) {
+          card.classList.add('crit');
+          badgeEl.textContent = '✦ CRÍTICO';
+        } else if (r.val === minVal) {
+          card.classList.add('fail');
+          badgeEl.textContent = 'FALHA';
+        }
+
+        card.classList.add('pulsing');
+        const pt = setTimeout(() => card.classList.remove('pulsing'), 200);
+        pendingTimers.push(pt);
+
+        lockedCount++;
+        if (lockedCount === cards.length) onAllLocked(results);
+        return;
+      }
+
+      numEl.textContent = rollSingle(r.die);
+      const tid = setTimeout(() => runStep(step + 1), RAMP[step]);
+      pendingTimers.push(tid);
+    }
+
+    const startTid = setTimeout(() => runStep(0), i * STAGGER);
+    pendingTimers.push(startTid);
+  });
+}
+
+/* ── ALL LOCKED ──────────────────────────────────────── */
+function onAllLocked(results) {
+  const total = results.reduce((sum, r) => sum + r.val, 0);
+
+  // Legendary flash: all dice at max simultaneously
+  if (results.every(r => r.val === r.die.faces)) {
+    const fl = document.getElementById('legend-flash');
+    fl.classList.remove('go');
+    void fl.offsetWidth;
+    fl.classList.add('go');
+  }
+
+  document.getElementById('total-num').textContent = total;
+  const t1 = setTimeout(() => document.getElementById('total-blk').classList.add('visible'), 200);
+  const t2 = setTimeout(() => document.getElementById('result-actions').classList.add('visible'), 370);
+  pendingTimers.push(t1, t2);
+
+  addHistory(results, total);
+}
+
+/* ── HISTORY ─────────────────────────────────────────── */
+function addHistory(results, total) {
+  // Build grouped label: "2× D20 + 1× D6"
+  const counts = {};
+  results.forEach(r => { counts[r.die.label] = (counts[r.die.label] || 0) + 1; });
+  const diceLabel = Object.entries(counts)
+    .map(([lbl, n]) => n + '× ' + lbl).join(' + ');
+  const numStr = results.map(r => r.val).join(', ');
+
+  rollHistory.unshift({ diceLabel, numStr, total });
+  if (rollHistory.length > 5) rollHistory.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const histEl = document.getElementById('history');
+  const listEl = document.getElementById('hist-list');
+  listEl.innerHTML = '';
+
+  if (rollHistory.length === 0) { histEl.classList.add('hidden'); return; }
+  histEl.classList.remove('hidden');
+
+  rollHistory.forEach(entry => {
+    const row = document.createElement('div');
+    row.className = 'hist-row';
+    row.innerHTML =
+      `<span class="hist-tag">${entry.diceLabel}</span>` +
+      `  →  ${entry.numStr}  =  ` +
+      `<span class="hist-total">${entry.total}</span>`;
+    listEl.appendChild(row);
+  });
+}
+
+/* ── NOVA ROLAGEM ────────────────────────────────────── */
+function novaRolagem() {
+  pendingTimers.forEach(clearTimeout);
+  pendingTimers = [];
+  queue = [];
+  document.getElementById('total-blk').classList.remove('visible');
+  document.getElementById('result-actions').classList.remove('visible');
+  setAppState('empty');
+}
+
+/* ── REROLAR ─────────────────────────────────────────── */
+function reRolar() {
+  if (!lastQueue.length) return;
+  const results = lastQueue.map(item => ({ die: item.die, val: rollSingle(item.die) }));
+
+  pendingTimers.forEach(clearTimeout);
+  pendingTimers = [];
+
+  document.getElementById('total-blk').classList.remove('visible');
+  document.getElementById('result-actions').classList.remove('visible');
+  // Stay in result state — just refresh the cards
+  showResults(results);
+}
+
+/* ── WIRE BUTTONS ────────────────────────────────────── */
+document.getElementById('btn-rolar').addEventListener('click', doRoll);
+document.getElementById('btn-nova-result').addEventListener('click', novaRolagem);
+document.getElementById('btn-reroll').addEventListener('click', reRolar);
+
+/* ── INIT ────────────────────────────────────────────── */
+buildBar();
+</script>
+</body>
+</html>

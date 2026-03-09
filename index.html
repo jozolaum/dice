@@ -1,378 +1,793 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Dado Arcano</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --bg:         #0d0d0f;
+      --surface:    #111118;
+      --surface2:   #18182a;
+      --border:     #1e1e30;
+      --border2:    #2a2a42;
+      --accent:     #a855f7;
+      --accent-dim: rgba(168,85,247,0.12);
+      --accent-glo: rgba(168,85,247,0.35);
+      --gold:       #f59e0b;
+      --gold-dim:   rgba(245,158,11,0.13);
+      --gold-glo:   rgba(245,158,11,0.45);
+      --red:        #ef4444;
+      --red-dim:    rgba(239,68,68,0.13);
+      --red-glo:    rgba(239,68,68,0.4);
+      --text:       #ece8f6;
+      --text-dim:   #5a5675;
+      --text-mute:  #2e2c42;
+    }
+
+    html, body { height: 100%; }
+
     body {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #1a1a2e;
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100dvh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      overflow-x: hidden;
     }
 
-    .calculator {
-      background: #16213e;
-      border-radius: 24px;
-      padding: 24px;
-      width: 320px;
-      box-shadow: 0 25px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
-    }
-
-    /* Display */
-    .display {
-      background: #0f3460;
-      border-radius: 16px;
-      padding: 20px 20px 16px;
-      margin-bottom: 20px;
-      min-height: 104px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      align-items: flex-end;
-      overflow: hidden;
-    }
-
-    .expression {
-      font-size: 13px;
-      color: rgba(255,255,255,0.4);
-      min-height: 18px;
-      word-break: break-all;
-      text-align: right;
-      margin-bottom: 6px;
-      letter-spacing: 0.5px;
-    }
-
-    .current {
-      font-size: 42px;
-      font-weight: 300;
-      color: #fff;
-      word-break: break-all;
-      text-align: right;
-      line-height: 1.1;
-      transition: font-size 0.1s;
-    }
-
-    .current.small { font-size: 28px; }
-    .current.smaller { font-size: 20px; }
-
-    /* Button grid */
-    .buttons {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-    }
-
-    button {
-      border: none;
-      border-radius: 14px;
-      height: 64px;
-      font-size: 18px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: transform 0.08s, filter 0.08s, background 0.1s;
-      outline: none;
-      position: relative;
-      overflow: hidden;
-    }
-
-    button:active, button.pressed {
-      transform: scale(0.93);
-      filter: brightness(0.85);
-    }
-
-    /* Ripple */
-    button::after {
+    body::before {
       content: '';
-      position: absolute;
-      inset: 0;
-      background: rgba(255,255,255,0.15);
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 50% -10%, rgba(168,85,247,.07) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 80% 110%, rgba(168,85,247,.05) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .wrap {
+      max-width: 430px; margin: 0 auto;
+      min-height: 100dvh;
+      display: flex; flex-direction: column;
+      position: relative; z-index: 1;
+    }
+
+    /* ── HEADER ─────────────────────────────────── */
+    header { padding: 36px 24px 20px; text-align: center; }
+
+    .hdr-rune {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic; font-size: 12px;
+      letter-spacing: 7px; color: var(--text-mute);
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600; font-size: 38px;
+      letter-spacing: 6px; text-transform: uppercase; line-height: 1;
+    }
+    h1 em { font-style: normal; color: var(--accent); }
+    .hdr-rule {
+      width: 80px; height: 1px; margin: 14px auto 0;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    /* ── HOME ───────────────────────────────────── */
+    #home { flex: 1; display: flex; flex-direction: column; }
+    #home.hidden { display: none; }
+    main { flex: 1; padding: 8px 18px 160px; }
+
+    /* ── DICE GRID ──────────────────────────────── */
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+
+    .die-card[data-id="d100"] {
+      grid-column: 1 / -1;
+      max-width: calc(50% - 6px);
+      justify-self: center;
+    }
+
+    .die-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px 12px 16px;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 10px;
+      cursor: pointer; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: border-color .18s ease-out,
+                  background .18s ease-out,
+                  box-shadow .18s ease-out,
+                  transform .18s ease-out;
+      /* entrance animation — assigned per-card via JS */
       opacity: 0;
-      border-radius: inherit;
-      transition: opacity 0.2s;
     }
-    button:focus-visible::after { opacity: 1; }
-
-    /* Button types */
-    .btn-num {
-      background: #1a2a4a;
-      color: #e8eaf6;
+    .die-card.entered {
+      opacity: 1;
     }
-    .btn-num:hover { background: #1f3461; }
-
-    .btn-op {
-      background: #533483;
-      color: #fff;
-    }
-    .btn-op:hover { background: #6240a0; }
-
-    .btn-op.active-op {
-      background: #e94560;
-      color: #fff;
+    @keyframes card-enter {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
-    .btn-eq {
-      background: #e94560;
-      color: #fff;
+    .die-card:hover,
+    .die-card:focus-visible {
+      transform: translateY(-3px) scale(1.03);
+      border-color: rgba(168,85,247,0.6);
+      background: rgba(255,255,255,0.03);
+      outline: none;
     }
-    .btn-eq:hover { background: #ff2d55; }
-
-    .btn-fn {
-      background: #0f3460;
-      color: #a8b2d8;
+    .die-card:active {
+      transform: scale(0.96) !important;
+      transition-duration: .08s;
     }
-    .btn-fn:hover { background: #1a4a80; }
-
-    .btn-clear {
-      background: #0f3460;
-      color: #e94560;
-      font-weight: 600;
+    .die-card.selected {
+      border-color: var(--accent);
+      background: var(--surface2);
+      box-shadow: inset 0 0 12px rgba(147,51,234,0.15);
+      transform: scale(1.03);
+      animation: selected-pulse 1.5s ease-in-out infinite;
     }
-    .btn-clear:hover { background: #1a1a2e; }
+    .die-card.selected:active {
+      animation: none;
+    }
+    @keyframes selected-pulse {
+      0%, 100% { border-color: var(--accent); }
+      50%       { border-color: rgba(168,85,247,0.55); }
+    }
 
-    .span-two { grid-column: span 2; }
+    /* SVGs */
+    .die-svg {
+      width: 68px; height: 68px; overflow: visible;
+      transition: transform .2s cubic-bezier(.34,1.56,.64,1), filter .3s;
+    }
+    .die-card:hover .die-svg,
+    .die-card:focus-visible .die-svg { transform: scale(1.08); }
+    .die-card.selected .die-svg      { transform: scale(1.08); }
 
-    /* Keyboard hint */
-    .hint {
-      margin-top: 16px;
-      text-align: center;
-      font-size: 11px;
-      color: rgba(255,255,255,0.2);
-      letter-spacing: 0.3px;
+    .die-svg polygon,
+    .die-svg line,
+    .die-svg circle,
+    .die-svg rect {
+      fill: none;
+      stroke: var(--text-dim);
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: stroke .3s;
+    }
+    .die-card.selected .die-svg polygon,
+    .die-card.selected .die-svg line,
+    .die-card.selected .die-svg circle,
+    .die-card.selected .die-svg rect { stroke: var(--accent); }
+    .die-card.selected .die-svg { filter: drop-shadow(0 0 7px rgba(168,85,247,.7)); }
+
+    .die-lbl {
+      font-size: 10px; letter-spacing: 3px;
+      color: var(--text-dim); text-transform: uppercase;
+      transition: color .3s;
+    }
+    .die-card.selected .die-lbl { color: var(--accent); }
+
+    /* ── BOTTOM PANEL ───────────────────────────── */
+    .panel {
+      position: fixed; bottom: 0; left: 50%;
+      transform: translateX(-50%) translateY(110%);
+      width: 100%; max-width: 430px;
+      background: var(--surface);
+      border-top: 1px solid var(--border2);
+      border-radius: 22px 22px 0 0;
+      padding: 20px 24px 44px;
+      transition: transform .42s cubic-bezier(.34,1.45,.64,1);
+      z-index: 20;
+    }
+    .panel.open { transform: translateX(-50%) translateY(0); }
+    .panel-grip {
+      width: 38px; height: 4px;
+      background: var(--border2); border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+    .panel-name {
+      font-family: 'Cormorant Garamond', serif; font-style: italic;
+      font-size: 15px; letter-spacing: 4px; color: var(--text-dim);
+      text-align: center; margin-bottom: 22px;
+    }
+    .srow {
+      display: flex; justify-content: space-between;
+      align-items: baseline; margin-bottom: 10px;
+    }
+    .srow-lbl { font-size: 10px; letter-spacing: 3px; color: var(--text-dim); }
+    .srow-val {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 36px; font-weight: 600; color: var(--accent); line-height: 1;
+    }
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%; height: 3px; border-radius: 2px;
+      outline: none; cursor: pointer; margin-bottom: 24px;
+      background: linear-gradient(to right,
+        var(--accent) 0%, var(--accent) var(--pct,0%),
+        var(--border2) var(--pct,0%), var(--border2) 100%);
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 14px var(--accent-glo); cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 26px; height: 26px; border: none; border-radius: 50%;
+      background: var(--accent); cursor: pointer;
+    }
+    .btn-roll {
+      width: 100%; padding: 18px;
+      border: none; border-radius: 14px; color: #fff;
+      font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700;
+      letter-spacing: 7px; cursor: pointer;
+      -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+      transition: background .18s, transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s;
+      box-shadow: 0 6px 30px var(--accent-glo);
+      position: relative; overflow: hidden;
+      background: var(--accent);
+      animation: btn-shimmer 3s ease-in-out infinite;
+    }
+    @keyframes btn-shimmer {
+      0%, 100% { background: var(--accent); }
+      50%       { background: #b76ef9; box-shadow: 0 6px 36px rgba(168,85,247,.5); }
+    }
+    .btn-roll::after {
+      content: '';
+      position: absolute; top: 0; left: -120%;
+      width: 60%; height: 100%;
+      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%);
+      animation: btn-shine 3s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes btn-shine {
+      0%        { left: -120%; }
+      40%, 100% { left: 160%;  }
+    }
+    .btn-roll:hover  { transform: scale(1.02); background: #b76ef9; animation: none; }
+    .btn-roll:active { transform: scale(.97) !important; background: #9333ea; animation: none; }
+
+    /* ── RESULTS SCREEN ─────────────────────────── */
+    #results {
+      display: none; flex-direction: column;
+      align-items: center; min-height: 100dvh;
+      padding-bottom: 60px;
+      position: relative; z-index: 1;
+    }
+    #results.active { display: flex; }
+
+    .res-topbar {
+      width: 100%; padding: 20px 20px 10px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .btn-nav {
+      background: none; border: 1px solid var(--border2);
+      border-radius: 10px; padding: 10px 14px;
+      color: var(--text-dim);
+      font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: border-color .2s, color .2s; white-space: nowrap;
+    }
+    .btn-nav:active { border-color: var(--accent); color: var(--accent); }
+
+    .res-title {
+      flex: 1; text-align: right;
+      font-family: 'Cormorant Garamond', serif; font-style: italic;
+      font-size: 17px; color: var(--text-dim); letter-spacing: 2px;
+    }
+
+    .ornament {
+      font-size: 14px; letter-spacing: 10px;
+      color: var(--text-mute); margin: 8px 0 20px;
+    }
+
+    /* Result cards */
+    .res-cards {
+      display: flex; flex-wrap: wrap;
+      gap: 12px; justify-content: center;
+      padding: 0 20px 28px; width: 100%;
+    }
+    .rcard {
+      width: 88px; min-height: 96px;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 10px 6px;
+      transition: border-color .25s, box-shadow .25s;
+    }
+    .rcard-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 34px; font-weight: 600;
+      color: var(--text-dim); line-height: 1;
+      transition: color .25s;
+      min-width: 1ch; text-align: center;
+    }
+    .rcard-sub {
+      font-size: 9px; letter-spacing: 2px;
+      color: var(--text-mute); margin-top: 3px;
+    }
+    .rcard-badge {
+      font-size: 8px; letter-spacing: 1.5px;
+      margin-top: 6px; height: 12px;
+      opacity: 0; transition: opacity .3s;
+    }
+
+    /* Cycling state */
+    .rcard.cycling .rcard-num { color: var(--text-dim); }
+
+    /* Locked state */
+    .rcard.locked { border-color: var(--accent); }
+    .rcard.locked .rcard-num { color: var(--text); }
+
+    /* Critical */
+    .rcard.crit {
+      border-color: var(--gold);
+      box-shadow: 0 0 22px var(--gold-glo), inset 0 0 14px var(--gold-dim);
+    }
+    .rcard.crit .rcard-num { color: var(--gold); }
+    .rcard.crit .rcard-badge { color: var(--gold); opacity: 1; }
+
+    /* Fail */
+    .rcard.fail {
+      border-color: var(--red);
+      box-shadow: 0 0 22px var(--red-glo), inset 0 0 14px var(--red-dim);
+    }
+    .rcard.fail .rcard-num { color: var(--red); }
+    .rcard.fail .rcard-badge { color: var(--red); opacity: 1; }
+
+    /* Lock pulse */
+    @keyframes lock-pulse {
+      0%   { transform: scale(1);    }
+      40%  { transform: scale(1.08); }
+      100% { transform: scale(1);    }
+    }
+    .rcard.pulsing { animation: lock-pulse .35s ease-out; }
+
+    /* Total */
+    .total-blk {
+      text-align: center; opacity: 0;
+      margin-top: 8px; padding: 0 20px;
+      pointer-events: none;
+    }
+    .total-blk.visible {
+      animation: total-in .55s cubic-bezier(.34,1.4,.64,1) forwards;
+      pointer-events: auto;
+    }
+    .total-eye {
+      font-size: 10px; letter-spacing: 8px;
+      color: var(--text-dim); margin-bottom: 4px;
+    }
+    .total-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 108px; font-weight: 600;
+      line-height: .9; color: var(--accent);
+      text-shadow: 0 0 50px var(--accent-glo), 0 0 100px rgba(168,85,247,.2);
+    }
+    .total-rule {
+      width: 60px; height: 1px; margin: 18px auto 0;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    /* ── HISTORY ────────────────────────────────── */
+    .history {
+      width: 100%; padding: 24px 20px 0;
+      opacity: 0;
+    }
+    .history.visible {
+      animation: fade-up .4s ease forwards;
+    }
+    .hist-title {
+      font-size: 9px; letter-spacing: 4px; color: var(--text-mute);
+      text-transform: uppercase; text-align: center; margin-bottom: 10px;
+    }
+    .hist-row {
+      padding: 8px 0;
+      border-top: 1px solid var(--border);
+      font-size: 10px; color: var(--text-dim);
+      letter-spacing: .5px; line-height: 1.6;
+    }
+    .hist-row:first-child { color: var(--text); }
+    .hist-tag { color: var(--accent); }
+    .hist-total { color: var(--text); font-weight: 700; }
+
+    /* ── LEGENDARY FLASH ────────────────────────── */
+    #legend-flash {
+      position: fixed; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at center, rgba(245,158,11,.3) 0%, transparent 70%);
+      opacity: 0; z-index: 100;
+    }
+    #legend-flash.go { animation: legend-pulse .9s ease-out forwards; }
+
+    /* ── KEYFRAMES ──────────────────────────────── */
+    @keyframes total-in {
+      0%   { opacity: 0; transform: translateY(28px) scale(.85); }
+      70%  { transform: translateY(-3px) scale(1.02); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes legend-pulse {
+      0%   { opacity: 0; }
+      15%  { opacity: 1; }
+      100% { opacity: 0; }
     }
   </style>
 </head>
 <body>
-<div class="calculator" role="main" aria-label="Calculator">
-  <div class="display" aria-live="polite">
-    <div class="expression" id="expression"></div>
-    <div class="current" id="current">0</div>
+
+<div id="legend-flash" aria-hidden="true"></div>
+
+<div class="wrap">
+
+  <!-- HOME SCREEN -->
+  <div id="home">
+    <header>
+      <div class="hdr-rune">✦ &nbsp; arcano &nbsp; ✦</div>
+      <h1>DADO <em>ARCANO</em></h1>
+      <div class="hdr-rule"></div>
+    </header>
+    <main>
+      <div class="grid" id="grid"></div>
+    </main>
   </div>
 
-  <div class="buttons">
-    <!-- Row 1 -->
-    <button class="btn-clear" data-action="clear"     aria-label="Clear">AC</button>
-    <button class="btn-fn"    data-action="sign"      aria-label="Toggle sign">+/−</button>
-    <button class="btn-fn"    data-action="percent"   aria-label="Percent">%</button>
-    <button class="btn-op"    data-action="op" data-op="/" aria-label="Divide">÷</button>
-    <!-- Row 2 -->
-    <button class="btn-num"   data-digit="7">7</button>
-    <button class="btn-num"   data-digit="8">8</button>
-    <button class="btn-num"   data-digit="9">9</button>
-    <button class="btn-op"    data-action="op" data-op="*" aria-label="Multiply">×</button>
-    <!-- Row 3 -->
-    <button class="btn-num"   data-digit="4">4</button>
-    <button class="btn-num"   data-digit="5">5</button>
-    <button class="btn-num"   data-digit="6">6</button>
-    <button class="btn-op"    data-action="op" data-op="-" aria-label="Subtract">−</button>
-    <!-- Row 4 -->
-    <button class="btn-num"   data-digit="1">1</button>
-    <button class="btn-num"   data-digit="2">2</button>
-    <button class="btn-num"   data-digit="3">3</button>
-    <button class="btn-op"    data-action="op" data-op="+" aria-label="Add">+</button>
-    <!-- Row 5 -->
-    <button class="btn-num span-two" data-digit="0">0</button>
-    <button class="btn-num"   data-action="decimal" aria-label="Decimal">.</button>
-    <button class="btn-eq"    data-action="equals"  aria-label="Equals">=</button>
+  <!-- RESULTS SCREEN -->
+  <div id="results" role="region" aria-live="polite" aria-label="Resultados">
+    <div class="res-topbar">
+      <button class="btn-nav" id="btn-back" aria-label="Voltar para seleção">← VOLTAR</button>
+      <button class="btn-nav" id="btn-reroll" aria-label="Re-rolar mesma configuração">↺ REROLAR</button>
+      <div class="res-title" id="res-title"></div>
+    </div>
+    <div class="ornament">⋆ &nbsp;─&nbsp; ⋆ &nbsp;─&nbsp; ⋆</div>
+    <div class="res-cards" id="res-cards"></div>
+    <div class="total-blk" id="total-blk">
+      <div class="total-eye">total</div>
+      <div class="total-num" id="total-num"></div>
+      <div class="total-rule"></div>
+    </div>
+    <div class="history" id="history">
+      <div class="hist-title">histórico</div>
+      <div class="hist-list" id="hist-list"></div>
+    </div>
   </div>
 
-  <div class="hint">keyboard supported &nbsp;·&nbsp; backspace to delete</div>
+</div>
+
+<!-- BOTTOM PANEL -->
+<div class="panel" id="panel" role="dialog" aria-modal="true" aria-label="Configurar rolagem">
+  <div class="panel-grip"></div>
+  <div class="panel-name" id="panel-name">selecionar dado</div>
+  <div class="srow">
+    <span class="srow-lbl">dados</span>
+    <span class="srow-val" id="sval">1</span>
+  </div>
+  <input type="range" id="slider" min="1" max="5" value="1" aria-label="Quantidade de dados" />
+  <button class="btn-roll" id="btn-roll" aria-label="Rolar dados">ROLAR</button>
 </div>
 
 <script>
-  const expressionEl = document.getElementById('expression');
-  const currentEl    = document.getElementById('current');
+'use strict';
 
-  let state = {
-    current:    '0',
-    previous:   null,
-    operator:   null,
-    justEvaled: false,
-  };
+/* ── DICE DATA ─────────────────────────────────────── */
+const DICE = [
+  { id:'d4',   faces:4,   label:'D4'            },
+  { id:'d6',   faces:6,   label:'D6'            },
+  { id:'d8',   faces:8,   label:'D8'            },
+  { id:'d10',  faces:10,  label:'D10'           },
+  { id:'d12',  faces:12,  label:'D12'           },
+  { id:'d20',  faces:20,  label:'D20'           },
+  { id:'d100', faces:100, label:'D100', step:10, minVal:10 },
+];
 
-  /* ── helpers ── */
-  function formatNumber(val) {
-    const n = parseFloat(val);
-    if (isNaN(n)) return val;
-    // Limit display precision
-    const s = parseFloat(n.toPrecision(12)).toString();
-    return s;
-  }
+/* ── SVG SHAPES (viewBox 0 0 72 72) ────────────────── */
+// D4  — equilateral triangle + 3 median lines from centroid
+// D6  — cube face (perspective)
+// D8  — vertical diamond (rhombus) + horizontal midline
+// D10 — elongated kite (taller than wide)
+// D12 — regular pentagon
+// D20 — triangle + inner inverted triangle (4-face subdivision)
+// D100— circle + inner circle + crosshairs
+const SVG = {
+  d4:
+    `<polygon points="50,10 90,80 10,80"/>
+     <line x1="50" y1="10" x2="50" y2="80"/>
+     <line x1="90" y1="80" x2="30" y2="45"/>
+     <line x1="10" y1="80" x2="70" y2="45"/>`,
 
-  function updateDisplay() {
-    const txt = formatNumber(state.current);
-    currentEl.textContent = txt;
-    // Scale font for long numbers
-    currentEl.classList.toggle('small',   txt.length > 10);
-    currentEl.classList.toggle('smaller', txt.length > 16);
+  d6:
+    `<polygon points="50,15 80,32 80,68 50,85 20,68 20,32"/>
+     <line x1="50" y1="15" x2="50" y2="50"/>
+     <line x1="80" y1="32" x2="50" y2="50"/>
+     <line x1="20" y1="68" x2="50" y2="50"/>`,
 
-    // Operator label for expression
-    const opLabel = { '+': '+', '-': '−', '*': '×', '/': '÷' };
-    if (state.previous !== null && state.operator) {
-      expressionEl.textContent =
-        formatNumber(state.previous) + ' ' + (opLabel[state.operator] ?? state.operator);
-    } else {
-      expressionEl.textContent = '';
-    }
+  d8:
+    `<polygon points="50,10 85,50 50,90 15,50"/>
+     <line x1="15" y1="50" x2="85" y2="50"/>
+     <line x1="50" y1="10" x2="85" y2="50"/>
+     <line x1="50" y1="10" x2="15" y2="50"/>
+     <line x1="50" y1="90" x2="85" y2="50"/>
+     <line x1="50" y1="90" x2="15" y2="50"/>`,
 
-    // Highlight active operator button
-    document.querySelectorAll('.btn-op').forEach(b => {
-      b.classList.toggle('active-op',
-        !state.justEvaled && b.dataset.op === state.operator && state.previous !== null
-      );
+  d10:
+    `<polygon points="50,8 78,38 65,88 35,88 22,38"/>
+     <line x1="50" y1="8"  x2="50" y2="88"/>
+     <line x1="22" y1="38" x2="78" y2="38"/>
+     <line x1="22" y1="38" x2="65" y2="88"/>
+     <line x1="78" y1="38" x2="35" y2="88"/>`,
+
+  d12:
+    `<polygon points="50,12 82,35 70,72 30,72 18,35"/>
+     <polygon points="50,22 72,38 64,62 36,62 28,38"/>`,
+
+  d20:
+    `<polygon points="50,8 88,72 12,72"/>
+     <line x1="50" y1="8"  x2="50" y2="72"/>
+     <line x1="50" y1="8"  x2="31" y2="40"/>
+     <line x1="50" y1="8"  x2="69" y2="40"/>
+     <line x1="12" y1="72" x2="69" y2="40"/>
+     <line x1="88" y1="72" x2="31" y2="40"/>
+     <line x1="31" y1="40" x2="69" y2="40"/>`,
+
+  d100:
+    `<circle cx="50" cy="50" r="38"/>
+     <circle cx="50" cy="50" r="22" stroke-opacity=".28"/>
+     <line x1="50" y1="12" x2="50" y2="88" stroke-opacity=".22"/>
+     <line x1="12" y1="50" x2="88" y2="50" stroke-opacity=".22"/>
+     <line x1="23" y1="23" x2="77" y2="77" stroke-opacity=".11"/>
+     <line x1="77" y1="23" x2="23" y2="77" stroke-opacity=".11"/>`,
+};
+
+/* ── STATE ─────────────────────────────────────────── */
+let selectedId  = null;
+let lastDie     = null;
+let lastQty     = 1;
+let rollHistory = [];
+let pendingTimers = [];
+
+/* ── BUILD GRID ────────────────────────────────────── */
+function buildGrid() {
+  const grid = document.getElementById('grid');
+  DICE.forEach((die, i) => {
+    const card = document.createElement('div');
+    card.className = 'die-card';
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', 'Selecionar ' + die.label);
+    card.setAttribute('aria-pressed', 'false');
+    card.dataset.id = die.id;
+    card.innerHTML =
+      '<svg class="die-svg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + SVG[die.id] + '</svg>' +
+      '<span class="die-lbl">' + die.label + '</span>';
+    card.addEventListener('click',   () => selectDie(die.id));
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectDie(die.id); }
     });
+    grid.appendChild(card);
+    // Stagger entrance: each card fades+slides in with 60ms offset
+    setTimeout(() => {
+      card.style.animation = 'card-enter 0.4s cubic-bezier(.34,1.56,.64,1) forwards';
+    }, i * 60);
+  });
+}
+
+/* ── SELECT DIE ────────────────────────────────────── */
+function selectDie(id) {
+  selectedId = id;
+  const die = DICE.find(d => d.id === id);
+  document.querySelectorAll('.die-card').forEach(c => {
+    const sel = c.dataset.id === id;
+    c.classList.toggle('selected', sel);
+    c.setAttribute('aria-pressed', sel ? 'true' : 'false');
+  });
+  document.getElementById('panel-name').textContent = 'rolando ' + die.label;
+  document.getElementById('slider').value = 1;
+  syncSlider();
+  document.getElementById('panel').classList.add('open');
+}
+
+/* ── SLIDER ────────────────────────────────────────── */
+function syncSlider() {
+  const s = document.getElementById('slider');
+  const v = +s.value;
+  document.getElementById('sval').textContent = v;
+  s.style.setProperty('--pct', ((v - 1) / 4 * 100).toFixed(1) + '%');
+}
+document.getElementById('slider').addEventListener('input', syncSlider);
+
+/* ── ROLL ──────────────────────────────────────────── */
+function rollSingle(die) {
+  if (die.step) {
+    return (Math.floor(Math.random() * (die.faces / die.step)) + 1) * die.step;
   }
+  return Math.floor(Math.random() * die.faces) + 1;
+}
 
-  /* ── actions ── */
-  function inputDigit(d) {
-    if (state.justEvaled) {
-      state.current = d;
-      state.justEvaled = false;
-    } else {
-      state.current = state.current === '0' ? d : state.current + d;
-    }
-  }
+function doRoll() {
+  if (!selectedId) return;
+  const die = DICE.find(d => d.id === selectedId);
+  const qty = +document.getElementById('slider').value;
+  lastDie = die;
+  lastQty = qty;
+  startResults(die, Array.from({ length: qty }, () => rollSingle(die)));
+}
 
-  function inputDecimal() {
-    if (state.justEvaled) { state.current = '0.'; state.justEvaled = false; return; }
-    if (!state.current.includes('.')) state.current += '.';
-  }
+document.getElementById('btn-roll').addEventListener('click', doRoll);
 
-  function inputOperator(op) {
-    if (state.operator && !state.justEvaled) evaluate();
-    state.previous   = state.current;
-    state.operator   = op;
-    state.justEvaled = false;
-    // Next digit will replace current
-    state._opJustPressed = true;
-  }
+document.getElementById('btn-reroll').addEventListener('click', () => {
+  if (!lastDie) return;
+  startResults(lastDie, Array.from({ length: lastQty }, () => rollSingle(lastDie)));
+});
 
-  function evaluate() {
-    if (state.operator === null || state.previous === null) return;
-    const a = parseFloat(state.previous);
-    const b = parseFloat(state.current);
-    let result;
-    switch (state.operator) {
-      case '+': result = a + b; break;
-      case '-': result = a - b; break;
-      case '*': result = a * b; break;
-      case '/':
-        result = b === 0 ? 'Error' : a / b;
-        break;
-    }
-    // Build expression label before clearing
-    const opLabel = { '+': '+', '-': '−', '*': '×', '/': '÷' };
-    expressionEl.textContent =
-      formatNumber(state.previous) + ' ' + (opLabel[state.operator] ?? state.operator) +
-      ' ' + formatNumber(state.current) + ' =';
+document.getElementById('btn-back').addEventListener('click', goHome);
 
-    state.current    = result === 'Error' ? 'Error' : formatNumber(result);
-    state.previous   = null;
-    state.operator   = null;
-    state.justEvaled = true;
-  }
+/* ── SHOW RESULTS + SLOT MACHINE ───────────────────── */
+// Delay steps (ms) for the ease-out speed ramp — each step fires one random number
+const RAMP = [40, 40, 40, 40, 60, 60, 90, 90, 130, 180, 240, 320, 420, 560];
+const STAGGER = 300; // ms between each die starting
 
-  function clear() {
-    state = { current: '0', previous: null, operator: null, justEvaled: false };
-    expressionEl.textContent = '';
-  }
+function startResults(die, results) {
+  // Cancel any in-flight animations
+  pendingTimers.forEach(clearTimeout);
+  pendingTimers = [];
 
-  function toggleSign() {
-    if (state.current === '0' || state.current === 'Error') return;
-    state.current = state.current.startsWith('-')
-      ? state.current.slice(1)
-      : '-' + state.current;
-  }
+  // Switch screens
+  document.getElementById('home').classList.add('hidden');
+  document.getElementById('panel').classList.remove('open');
 
-  function percent() {
-    const n = parseFloat(state.current);
-    if (isNaN(n)) return;
-    state.current = formatNumber(n / 100);
-  }
+  const screen = document.getElementById('results');
+  screen.classList.add('active');
+  document.getElementById('res-title').textContent = die.label;
 
-  function backspace() {
-    if (state.justEvaled || state.current === 'Error') { clear(); return; }
-    state.current = state.current.length > 1
-      ? state.current.slice(0, -1)
-      : '0';
-  }
+  // Reset total & history visibility
+  const totalBlk = document.getElementById('total-blk');
+  totalBlk.classList.remove('visible');
+  const histEl = document.getElementById('history');
+  histEl.classList.remove('visible');
 
-  /* ── handle button action ── */
-  function handle(el) {
-    const { action, op, digit } = el.dataset;
+  // Build cards
+  const box = document.getElementById('res-cards');
+  box.innerHTML = '';
 
-    if (digit !== undefined) {
-      if (state._opJustPressed) { state.current = digit; state._opJustPressed = false; }
-      else inputDigit(digit);
-    } else if (action === 'decimal') {
-      if (state._opJustPressed) { state.current = '0.'; state._opJustPressed = false; }
-      else inputDecimal();
-    } else if (action === 'op')      { inputOperator(op); }
-    else if (action === 'equals')    { if (!state.justEvaled) evaluate(); }
-    else if (action === 'clear')     { clear(); }
-    else if (action === 'sign')      { toggleSign(); }
-    else if (action === 'percent')   { percent(); }
-
-    updateDisplay();
-  }
-
-  /* ── button click ── */
-  document.querySelector('.buttons').addEventListener('click', e => {
-    const btn = e.target.closest('button');
-    if (!btn) return;
-    flashButton(btn);
-    handle(btn);
+  const cards = results.map((_, i) => {
+    const card = document.createElement('div');
+    card.className = 'rcard cycling';
+    card.setAttribute('aria-label', 'Dado ' + (i + 1));
+    card.innerHTML =
+      '<span class="rcard-num">·</span>' +
+      '<span class="rcard-sub">' + die.label + '</span>' +
+      '<span class="rcard-badge" aria-live="polite"></span>';
+    box.appendChild(card);
+    return card;
   });
 
-  function flashButton(btn) {
-    btn.classList.add('pressed');
-    setTimeout(() => btn.classList.remove('pressed'), 120);
-  }
+  // Slot machine animation per card — recursive setTimeout with ease-out ramp
+  let lockedCount = 0;
 
-  /* ── keyboard input ── */
-  const keyMap = {
-    '0':'0','1':'1','2':'2','3':'3','4':'4',
-    '5':'5','6':'6','7':'7','8':'8','9':'9',
-    '+':'+','-':'-','*':'*','/':'/',
-    'Enter':'=','=':'=',
-    '.':'.', ',':'.',
-    'Backspace':'backspace','Delete':'clear','Escape':'clear',
-    '%':'%',
-  };
+  cards.forEach((card, i) => {
+    const finalVal = results[i];
+    const numEl    = card.querySelector('.rcard-num');
+    const badgeEl  = card.querySelector('.rcard-badge');
 
-  document.addEventListener('keydown', e => {
-    const mapped = keyMap[e.key];
-    if (!mapped) return;
-    e.preventDefault();
+    function runStep(stepIndex) {
+      if (stepIndex >= RAMP.length) {
+        // All ramp steps done — lock onto final value
+        numEl.textContent = finalVal;
+        card.classList.remove('cycling');
+        card.classList.add('locked');
 
-    // Find matching button to animate
-    let btn = null;
-    if ('0123456789'.includes(mapped)) {
-      btn = document.querySelector(`[data-digit="${mapped}"]`);
-    } else if ('+-*/'.includes(mapped)) {
-      btn = document.querySelector(`[data-op="${mapped}"]`);
-    } else if (mapped === '=') {
-      btn = document.querySelector('[data-action="equals"]');
-    } else if (mapped === '.') {
-      btn = document.querySelector('[data-action="decimal"]');
-    } else if (mapped === 'clear') {
-      btn = document.querySelector('[data-action="clear"]');
-    } else if (mapped === 'backspace') {
-      backspace(); updateDisplay(); return;
-    } else if (mapped === '%') {
-      btn = document.querySelector('[data-action="percent"]');
+        // Crit / fail
+        const maxVal = die.faces;
+        const minVal = die.minVal || 1;
+        if (finalVal === maxVal) {
+          card.classList.add('crit');
+          badgeEl.textContent = '✦ CRÍTICO';
+        } else if (finalVal === minVal) {
+          card.classList.add('fail');
+          badgeEl.textContent = 'FALHA';
+        }
+
+        // Scale pulse: add class, let CSS keyframe handle it, then remove
+        card.classList.add('pulsing');
+        const pulseTid = setTimeout(() => card.classList.remove('pulsing'), 200);
+        pendingTimers.push(pulseTid);
+
+        lockedCount++;
+        if (lockedCount === cards.length) {
+          onAllLocked(die, results);
+        }
+        return;
+      }
+
+      numEl.textContent = rollSingle(die);
+      const tid = setTimeout(() => runStep(stepIndex + 1), RAMP[stepIndex]);
+      pendingTimers.push(tid);
     }
 
-    if (btn) { flashButton(btn); handle(btn); }
+    // Stagger the start of each die's sequence
+    const startTid = setTimeout(() => runStep(0), i * STAGGER);
+    pendingTimers.push(startTid);
   });
+}
 
-  /* ── init ── */
-  updateDisplay();
+/* ── AFTER ALL DICE LOCK ───────────────────────────── */
+function onAllLocked(die, results) {
+  const total = results.reduce((a, b) => a + b, 0);
+
+  // Legendary flash: ALL dice at max
+  if (results.every(v => v === die.faces)) {
+    const flash = document.getElementById('legend-flash');
+    flash.classList.remove('go');
+    void flash.offsetWidth; // reflow to restart animation
+    flash.classList.add('go');
+  }
+
+  // Reveal total
+  document.getElementById('total-num').textContent = total;
+  const t1 = setTimeout(() => {
+    document.getElementById('total-blk').classList.add('visible');
+  }, 220);
+  pendingTimers.push(t1);
+
+  // Save & render history
+  rollHistory.unshift({ die, results: [...results], total });
+  if (rollHistory.length > 5) rollHistory.pop();
+  renderHistory();
+
+  const t2 = setTimeout(() => {
+    document.getElementById('history').classList.add('visible');
+  }, 520);
+  pendingTimers.push(t2);
+}
+
+/* ── HISTORY ───────────────────────────────────────── */
+function renderHistory() {
+  const list = document.getElementById('hist-list');
+  list.innerHTML = '';
+  rollHistory.forEach(entry => {
+    const row = document.createElement('div');
+    row.className = 'hist-row';
+    row.innerHTML =
+      '<span class="hist-tag">' + entry.results.length + '× ' + entry.die.label + '</span>' +
+      ' → [' + entry.results.join(', ') + '] = ' +
+      '<span class="hist-total">' + entry.total + '</span>';
+    list.appendChild(row);
+  });
+}
+
+/* ── GO HOME ───────────────────────────────────────── */
+function goHome() {
+  pendingTimers.forEach(clearTimeout);
+  pendingTimers = [];
+
+  document.getElementById('results').classList.remove('active');
+  document.getElementById('home').classList.remove('hidden');
+  document.getElementById('total-blk').classList.remove('visible');
+  document.getElementById('history').classList.remove('visible');
+  document.getElementById('panel').classList.remove('open');
+
+  selectedId = null;
+  document.querySelectorAll('.die-card').forEach(c => {
+    c.classList.remove('selected');
+    c.setAttribute('aria-pressed', 'false');
+  });
+}
+
+/* ── INIT ──────────────────────────────────────────── */
+buildGrid();
+syncSlider();
 </script>
 </body>
 </html>
