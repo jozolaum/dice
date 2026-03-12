@@ -1,0 +1,1789 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cardápio Semanal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    /* ── CSS Custom Properties ── */
+    :root {
+      --fern-green: #4a7c59;
+      --marigold: #f9a620;
+      --terracotta: #b7472a;
+      --cream: #f5f3ed;
+      --dark-soil: #2c2c2c;
+      --warm-gray: #8a8578;
+      --white: #ffffff;
+      --light-sage: #e8ede5;
+      --fern-green-light: #6a9c79;
+      --fern-green-dark: #3a6249;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md: 0 2px 8px rgba(0,0,0,0.08);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --transition: 300ms ease;
+    }
+
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+
+    body {
+      font-family: "DM Sans", system-ui, sans-serif;
+      background-color: var(--cream);
+      color: var(--dark-soil);
+      line-height: 1.6;
+      min-height: 100vh;
+      /* Paper texture via SVG noise */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeBlend in='SourceGraphic' mode='multiply'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    }
+
+    /* ── Typography ── */
+    h1, h2, h3 {
+      font-family: "Playfair Display", Georgia, serif;
+      line-height: 1.2;
+    }
+
+    /* ── App Shell ── */
+    #app-shell {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* ── Loading Screen ── */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--cream);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      z-index: 1000;
+    }
+
+    #loading-screen.hidden { display: none; }
+
+    .loading-leaf {
+      animation: pulse-leaf 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-leaf {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.08); opacity: 0.7; }
+    }
+
+    .loading-text {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.25rem;
+      color: var(--fern-green);
+      font-style: italic;
+    }
+
+    .loading-subtitle {
+      font-size: 0.875rem;
+      color: var(--warm-gray);
+    }
+
+    /* ── Error Screen ── */
+    #error-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      gap: 16px;
+      text-align: center;
+    }
+
+    #error-screen.visible { display: flex; }
+
+    .error-title {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.25rem;
+      color: var(--terracotta);
+    }
+
+    .error-message {
+      font-size: 0.875rem;
+      color: var(--warm-gray);
+      max-width: 320px;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    #app-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--white);
+      box-shadow: var(--shadow-md);
+      padding: 0 16px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-title {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--fern-green);
+      letter-spacing: -0.01em;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      transition: background var(--transition), transform var(--transition);
+      color: var(--fern-green);
+    }
+
+    .icon-btn:hover {
+      background: var(--light-sage);
+      transform: scale(1.05);
+    }
+
+    .icon-btn:active { transform: scale(0.95); }
+
+    /* ── Main Content ── */
+    #main-content {
+      padding: 16px;
+      padding-bottom: 100px;
+    }
+
+    /* ── Views ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Day Cards ── */
+    .day-card {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      margin-bottom: 12px;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(12px);
+      animation: card-in 400ms ease forwards;
+    }
+
+    @keyframes card-in {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .day-card:nth-child(1) { animation-delay: 0ms; }
+    .day-card:nth-child(2) { animation-delay: 50ms; }
+    .day-card:nth-child(3) { animation-delay: 100ms; }
+    .day-card:nth-child(4) { animation-delay: 150ms; }
+    .day-card:nth-child(5) { animation-delay: 200ms; }
+    .day-card:nth-child(6) { animation-delay: 250ms; }
+    .day-card:nth-child(7) { animation-delay: 300ms; }
+
+    .day-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 12px;
+      background: linear-gradient(135deg, var(--light-sage) 0%, #dde8d9 100%);
+      border-bottom: 1px solid rgba(74,124,89,0.1);
+    }
+
+    .day-name {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--fern-green);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .day-clear-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: rgba(183,71,42,0.08);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.875rem;
+      color: var(--terracotta);
+      transition: background var(--transition), transform var(--transition);
+    }
+
+    .day-clear-btn:hover {
+      background: rgba(183,71,42,0.16);
+      transform: scale(1.08);
+    }
+
+    .meal-section {
+      padding: 12px 16px;
+    }
+
+    .meal-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--warm-gray);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .meal-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--light-sage);
+    }
+
+    .slots-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .slot-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+    }
+
+    .slot-icon {
+      font-size: 1rem;
+      width: 24px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .slot-btn {
+      flex: 1;
+      min-height: 40px;
+      border: 1.5px dashed var(--light-sage);
+      background: transparent;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 0.8rem;
+      color: var(--warm-gray);
+      font-family: "DM Sans", system-ui, sans-serif;
+      transition: all var(--transition);
+      text-align: left;
+    }
+
+    .slot-btn:hover {
+      border-color: var(--fern-green);
+      color: var(--fern-green);
+      background: var(--light-sage);
+    }
+
+    .slot-filled {
+      flex: 1;
+      min-height: 40px;
+      background: var(--light-sage);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+    }
+
+    .slot-dish-name {
+      flex: 1;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--dark-soil);
+      line-height: 1.3;
+    }
+
+    .slot-remove-btn {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: rgba(44,44,44,0.1);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      color: var(--warm-gray);
+      transition: all var(--transition);
+      flex-shrink: 0;
+    }
+
+    .slot-remove-btn:hover {
+      background: rgba(183,71,42,0.15);
+      color: var(--terracotta);
+    }
+
+    .dinner-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-top: 1px solid var(--light-sage);
+      cursor: pointer;
+      background: transparent;
+      border-left: none;
+      border-right: none;
+      border-bottom: none;
+      width: 100%;
+      font-family: "DM Sans", system-ui, sans-serif;
+      font-size: 0.8rem;
+      color: var(--fern-green);
+      font-weight: 500;
+      transition: background var(--transition);
+    }
+
+    .dinner-toggle:hover { background: var(--light-sage); }
+
+    .dinner-section {
+      border-top: 1px solid var(--light-sage);
+    }
+
+    .dinner-section .meal-section {
+      padding-top: 10px;
+    }
+
+    .dinner-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px 2px;
+    }
+
+    .dinner-remove-btn {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: rgba(183,71,42,0.08);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      color: var(--terracotta);
+      transition: all var(--transition);
+    }
+
+    .dinner-remove-btn:hover {
+      background: rgba(183,71,42,0.18);
+    }
+
+    /* ── Empty State ── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      text-align: center;
+      gap: 12px;
+    }
+
+    .empty-state-title {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.1rem;
+      color: var(--fern-green);
+    }
+
+    .empty-state-text {
+      font-size: 0.875rem;
+      color: var(--warm-gray);
+      max-width: 260px;
+      line-height: 1.6;
+    }
+
+    /* ── Shopping List ── */
+    .shopping-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .shopping-header h2 {
+      font-size: 1.4rem;
+      color: var(--fern-green);
+    }
+
+    .section-card {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      margin-bottom: 16px;
+      overflow: hidden;
+      animation: card-in 400ms ease forwards;
+      opacity: 0;
+    }
+
+    .section-card:nth-child(1) { animation-delay: 0ms; }
+    .section-card:nth-child(2) { animation-delay: 80ms; }
+    .section-card:nth-child(3) { animation-delay: 160ms; }
+    .section-card:nth-child(4) { animation-delay: 240ms; }
+    .section-card:nth-child(5) { animation-delay: 320ms; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px 12px;
+      background: linear-gradient(135deg, var(--fern-green) 0%, var(--fern-green-dark) 100%);
+      color: var(--white);
+    }
+
+    .section-header.pantry-header {
+      background: linear-gradient(135deg, var(--marigold) 0%, #e08b10 100%);
+    }
+
+    .section-header-title {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .section-icon {
+      font-size: 1.1rem;
+    }
+
+    .pantry-items {
+      padding: 14px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pantry-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 20px;
+      background: var(--light-sage);
+      border: 1.5px solid transparent;
+      transition: all var(--transition);
+      font-size: 0.825rem;
+    }
+
+    .pantry-item:hover { border-color: var(--fern-green); }
+
+    .pantry-item.checked {
+      background: rgba(74,124,89,0.08);
+      text-decoration: line-through;
+      color: var(--warm-gray);
+      opacity: 0.7;
+    }
+
+    .pantry-item input[type="checkbox"] {
+      accent-color: var(--fern-green);
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
+    }
+
+    .store-items {
+      padding: 8px 0;
+    }
+
+    .shopping-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: background var(--transition);
+      border-bottom: 1px solid rgba(232,237,229,0.5);
+    }
+
+    .shopping-item:last-child { border-bottom: none; }
+
+    .shopping-item:hover { background: rgba(232,237,229,0.4); }
+
+    .shopping-item.checked {
+      opacity: 0.5;
+    }
+
+    .shopping-item.checked .item-name {
+      text-decoration: line-through;
+    }
+
+    .shopping-item input[type="checkbox"] {
+      accent-color: var(--fern-green);
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .item-text { flex: 1; }
+
+    .item-name {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--dark-soil);
+      line-height: 1.4;
+    }
+
+    .item-context {
+      font-size: 0.75rem;
+      color: var(--warm-gray);
+      margin-top: 1px;
+    }
+
+    .shopping-empty {
+      padding: 32px 16px;
+      text-align: center;
+      color: var(--warm-gray);
+      font-size: 0.875rem;
+      font-style: italic;
+    }
+
+    /* ── Action Buttons ── */
+    .action-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 48px;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-family: "DM Sans", system-ui, sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all var(--transition);
+      padding: 0 20px;
+      text-decoration: none;
+    }
+
+    .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: var(--fern-green);
+      color: var(--white);
+    }
+
+    .btn-primary:hover { background: var(--fern-green-dark); }
+
+    .btn-secondary {
+      background: var(--marigold);
+      color: var(--dark-soil);
+    }
+
+    .btn-secondary:hover { background: #e89310; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--fern-green);
+      border: 1.5px solid var(--fern-green);
+    }
+
+    .btn-ghost:hover { background: var(--light-sage); }
+
+    .btn-danger {
+      background: rgba(183,71,42,0.08);
+      color: var(--terracotta);
+      border: 1.5px solid rgba(183,71,42,0.2);
+    }
+
+    .btn-danger:hover { background: rgba(183,71,42,0.15); }
+
+    /* ── Bottom Sheet Modal ── */
+    #modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 200;
+      opacity: 0;
+      transition: opacity var(--transition);
+      pointer-events: none;
+    }
+
+    #modal-backdrop.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #bottom-sheet {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%) translateY(100%);
+      width: 100%;
+      max-width: 480px;
+      max-height: 65vh;
+      background: var(--white);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      z-index: 201;
+      display: flex;
+      flex-direction: column;
+      transition: transform 350ms cubic-bezier(0.34, 1.1, 0.64, 1);
+      box-shadow: 0 -8px 32px rgba(0,0,0,0.15);
+    }
+
+    #bottom-sheet.open {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .sheet-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--light-sage);
+      border-radius: 2px;
+      margin: 10px auto 0;
+      flex-shrink: 0;
+    }
+
+    .sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--light-sage);
+      flex-shrink: 0;
+    }
+
+    .sheet-title {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.05rem;
+      color: var(--dark-soil);
+    }
+
+    .sheet-close-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--light-sage);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.875rem;
+      color: var(--warm-gray);
+      transition: all var(--transition);
+    }
+
+    .sheet-close-btn:hover {
+      background: rgba(183,71,42,0.15);
+      color: var(--terracotta);
+    }
+
+    .sheet-list {
+      overflow-y: auto;
+      flex: 1;
+      padding: 8px 12px 20px;
+    }
+
+    .sheet-list::-webkit-scrollbar { width: 4px; }
+    .sheet-list::-webkit-scrollbar-track { background: transparent; }
+    .sheet-list::-webkit-scrollbar-thumb { background: var(--light-sage); border-radius: 2px; }
+
+    .sheet-dish-card {
+      padding: 14px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition);
+      margin-bottom: 6px;
+      border: 1.5px solid transparent;
+    }
+
+    .sheet-dish-card:hover {
+      background: var(--light-sage);
+      border-color: var(--fern-green);
+      transform: translateX(3px);
+    }
+
+    .sheet-dish-name {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--dark-soil);
+    }
+
+    .sheet-dish-ingredients {
+      font-size: 0.75rem;
+      color: var(--warm-gray);
+      margin-top: 3px;
+      line-height: 1.5;
+    }
+
+    /* ── Toast / Confirm ── */
+    #confirm-dialog {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition);
+      padding: 24px;
+    }
+
+    #confirm-dialog.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .confirm-card {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      padding: 28px 24px 20px;
+      max-width: 340px;
+      width: 100%;
+      box-shadow: var(--shadow-lg);
+      transform: scale(0.94);
+      transition: transform var(--transition);
+    }
+
+    #confirm-dialog.visible .confirm-card { transform: scale(1); }
+
+    .confirm-title {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+      color: var(--dark-soil);
+    }
+
+    .confirm-text {
+      font-size: 0.875rem;
+      color: var(--warm-gray);
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .confirm-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .confirm-actions .btn { flex: 1; min-height: 44px; font-size: 0.875rem; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--light-sage); border-radius: 3px; }
+
+    /* ── Leaf Divider SVG ── */
+    .leaf-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 0;
+      opacity: 0.35;
+    }
+
+    /* Utility */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+    }
+
+    .mt-4 { margin-top: 4px; }
+    .mt-8 { margin-top: 8px; }
+    .mt-16 { margin-top: 16px; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      background: var(--marigold);
+      color: var(--dark-soil);
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    /* ── Planner view section label ── */
+    .view-section-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--warm-gray);
+      margin: 20px 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .view-section-label::before,
+    .view-section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--light-sage);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading-screen" role="status" aria-live="polite">
+  <svg class="loading-leaf" width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <ellipse cx="40" cy="38" rx="22" ry="30" fill="#4a7c59" opacity="0.15" transform="rotate(-18 40 38)"/>
+    <path d="M40 68 C40 68 18 48 20 28 C22 12 40 10 40 10 C40 10 58 12 60 28 C62 48 40 68 40 68Z" fill="#4a7c59" opacity="0.85"/>
+    <path d="M40 68 L40 18" stroke="#e8ede5" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M40 42 Q30 36 26 26" stroke="#e8ede5" stroke-width="1" stroke-linecap="round" opacity="0.7"/>
+    <path d="M40 50 Q50 44 54 34" stroke="#e8ede5" stroke-width="1" stroke-linecap="round" opacity="0.7"/>
+    <path d="M40 34 Q31 28 29 20" stroke="#e8ede5" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+  </svg>
+  <div>
+    <p class="loading-text">Carregando cardápio...</p>
+    <p class="loading-subtitle">Preparando seus ingredientes</p>
+  </div>
+</div>
+
+<!-- Error Screen -->
+<div id="error-screen" role="alert">
+  <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="32" cy="32" r="28" fill="#b7472a" opacity="0.1"/>
+    <path d="M32 18 L32 38" stroke="#b7472a" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="32" cy="46" r="2.5" fill="#b7472a"/>
+  </svg>
+  <p class="error-title">Não foi possível carregar o cardápio</p>
+  <p class="error-message" id="error-message-text">Verifique se o arquivo <code>data/cardapio_template.xlsx</code> está disponível e tente novamente.</p>
+  <button class="btn btn-primary" onclick="initApp()" style="margin-top:8px">
+    <span>↻</span> Tentar novamente
+  </button>
+</div>
+
+<!-- App Shell -->
+<div id="app-shell" style="display:none;" aria-label="Cardápio Semanal">
+
+  <!-- Header -->
+  <header id="app-header" role="banner">
+    <h1 class="header-title">🌿 Cardápio Semanal</h1>
+    <div class="header-actions">
+      <button class="icon-btn" id="btn-shopping" onclick="showView('shopping')" aria-label="Ver lista de compras" title="Lista de compras">
+        🛒
+      </button>
+      <button class="icon-btn" id="btn-reset" onclick="confirmNewMenu()" aria-label="Novo cardápio" title="Novo cardápio">
+        ✦
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main id="main-content" role="main">
+
+    <!-- View: Planner -->
+    <div id="view-planner" class="view active" role="region" aria-label="Planejamento semanal">
+      <div id="planner-days"></div>
+    </div>
+
+    <!-- View: Shopping List -->
+    <div id="view-shopping" class="view" role="region" aria-label="Lista de compras">
+      <div class="shopping-header">
+        <button class="icon-btn" onclick="showView('planner')" aria-label="Voltar ao cardápio" title="Voltar">←</button>
+        <h2>Lista de Compras</h2>
+      </div>
+      <div id="shopping-content"></div>
+      <div class="action-bar" id="shopping-actions">
+        <button class="btn btn-primary" onclick="downloadPDFMenu()">
+          🌿 Baixar PDF do Cardápio
+        </button>
+        <button class="btn btn-secondary" onclick="downloadPDFShopping()">
+          🛒 Baixar PDF da Lista
+        </button>
+        <button class="btn btn-ghost" onclick="showView('planner')">
+          ← Voltar ao Cardápio
+        </button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal Backdrop -->
+<div id="modal-backdrop" onclick="closeBottomSheet()" aria-hidden="true"></div>
+
+<!-- Bottom Sheet -->
+<div id="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+  <div class="sheet-handle" aria-hidden="true"></div>
+  <div class="sheet-header">
+    <h3 class="sheet-title" id="sheet-title">Escolha um prato</h3>
+    <button class="sheet-close-btn" onclick="closeBottomSheet()" aria-label="Fechar">✕</button>
+  </div>
+  <div class="sheet-list" id="sheet-list" role="list"></div>
+</div>
+
+<!-- Confirm Dialog -->
+<div id="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+  <div class="confirm-card">
+    <h3 class="confirm-title" id="confirm-title">Confirmar ação</h3>
+    <p class="confirm-text" id="confirm-text">Tem certeza?</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" id="confirm-cancel-btn" onclick="closeConfirm()">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-ok-btn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const CONFIG = {
+  pantryStaples: ["Azeite", "Manteiga", "Leite", "Cebola", "Alho", "Óleo", "Sal"],
+  days: ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"],
+  dayAbbrev: {
+    "Segunda-feira": "seg", "Terça-feira": "ter", "Quarta-feira": "qua",
+    "Quinta-feira": "qui", "Sexta-feira": "sex", "Sábado": "sáb", "Domingo": "dom"
+  },
+  slotCategoryMap: {
+    protein: "Proteína",
+    side: "Acompanhamento",
+    veggie: "Legume/Vegetal"
+  },
+  slotIcons: {
+    protein: "🍗",
+    side: "🍚",
+    veggie: "🥦"
+  },
+  slotLabels: {
+    protein: "Proteína",
+    side: "Acompanhamento",
+    veggie: "Legume/Vegetal"
+  },
+  storeIcons: {
+    "Supermercado": "🏪",
+    "Açougue": "🥩",
+    "Swift": "🧊"
+  }
+};
+
+const STATE_KEY = "cardapio-semanal-state";
+
+// ── GLOBAL STATE ─────────────────────────────────────────────────────────────
+let MEAL_DATA = { dishes: {} };
+let appState = null;
+let modalContext = null;
+
+// ── STATE HELPERS ─────────────────────────────────────────────────────────────
+function defaultWeekPlan() {
+  const plan = {};
+  CONFIG.days.forEach(day => {
+    plan[day] = {
+      lunch: { protein: null, side: null, veggie: null },
+      dinner: null,
+      dinnerExpanded: false
+    };
+  });
+  return plan;
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STATE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Ensure all days exist
+      CONFIG.days.forEach(day => {
+        if (!parsed.weekPlan[day]) {
+          parsed.weekPlan[day] = {
+            lunch: { protein: null, side: null, veggie: null },
+            dinner: null,
+            dinnerExpanded: false
+          };
+        }
+        // Ensure dinnerExpanded exists
+        if (parsed.weekPlan[day].dinnerExpanded === undefined) {
+          parsed.weekPlan[day].dinnerExpanded = false;
+        }
+      });
+      return parsed;
+    }
+  } catch (e) {
+    console.warn("Failed to load state:", e);
+  }
+  return {
+    weekPlan: defaultWeekPlan(),
+    shoppingChecked: {},
+    pantryChecked: {}
+  };
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STATE_KEY, JSON.stringify(appState));
+  } catch (e) {
+    console.warn("Failed to save state:", e);
+  }
+}
+
+// ── XLSX PARSING ──────────────────────────────────────────────────────────────
+async function fetchAndParseXLSX() {
+  const response = await fetch("data/cardapio_template.xlsx");
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const arrayBuffer = await response.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: "array" });
+
+  const sheetName = workbook.SheetNames.find(n => n === "Cardápio") || workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+  const dishes = {};
+
+  rows.forEach(row => {
+    const prato = (row["Prato"] || "").toString().trim();
+    const categoria = (row["Categoria"] || "").toString().trim();
+    const ingrediente = (row["Ingrediente"] || "").toString().trim();
+    const ondeComprar = (row["Onde Comprar"] || "").toString().trim();
+
+    if (!prato || !categoria) return;
+
+    if (!dishes[categoria]) dishes[categoria] = [];
+
+    let dish = dishes[categoria].find(d => d.name === prato);
+    if (!dish) {
+      dish = { name: prato, ingredients: [] };
+      dishes[categoria].push(dish);
+    }
+
+    if (ingrediente) {
+      dish.ingredients.push({ item: ingrediente, store: ondeComprar });
+    }
+  });
+
+  return { dishes };
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+async function initApp() {
+  document.getElementById("loading-screen").classList.remove("hidden");
+  document.getElementById("error-screen").classList.remove("visible");
+  document.getElementById("app-shell").style.display = "none";
+
+  try {
+    MEAL_DATA = await fetchAndParseXLSX();
+    appState = loadState();
+
+    document.getElementById("loading-screen").classList.add("hidden");
+    document.getElementById("app-shell").style.display = "block";
+
+    renderPlanner();
+  } catch (e) {
+    console.error("Init error:", e);
+    document.getElementById("loading-screen").classList.add("hidden");
+    document.getElementById("error-screen").classList.add("visible");
+    document.getElementById("error-message-text").textContent =
+      `Não foi possível carregar o arquivo de cardápio. Verifique se data/cardapio_template.xlsx está acessível. (${e.message})`;
+  }
+}
+
+// ── VIEW MANAGEMENT ───────────────────────────────────────────────────────────
+function showView(name) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById(`view-${name}`).classList.add("active");
+
+  if (name === "shopping") {
+    renderShoppingList();
+  }
+}
+
+// ── PLANNER RENDER ─────────────────────────────────────────────────────────────
+function renderPlanner() {
+  const container = document.getElementById("planner-days");
+  container.innerHTML = "";
+
+  CONFIG.days.forEach(day => {
+    const card = buildDayCard(day);
+    container.appendChild(card);
+  });
+}
+
+function buildDayCard(day) {
+  const dayState = appState.weekPlan[day];
+  const card = document.createElement("article");
+  card.className = "day-card";
+  card.id = `day-card-${day.replace(/[\s-]/g, "_")}`;
+  card.setAttribute("aria-label", day);
+
+  // Header
+  const header = document.createElement("div");
+  header.className = "day-header";
+  header.innerHTML = `
+    <span class="day-name">${day}</span>
+    <button class="day-clear-btn" onclick="confirmClearDay('${day}')" aria-label="Limpar ${day}" title="Limpar dia">🗑</button>
+  `;
+  card.appendChild(header);
+
+  // Lunch section
+  const lunchSection = document.createElement("div");
+  lunchSection.className = "meal-section";
+  lunchSection.innerHTML = `<div class="meal-label">🍽 Almoço</div>`;
+  lunchSection.appendChild(buildSlotsGrid(day, "lunch", dayState.lunch));
+  card.appendChild(lunchSection);
+
+  // Dinner toggle or dinner section
+  if (!dayState.dinnerExpanded) {
+    const dinnerToggle = document.createElement("button");
+    dinnerToggle.className = "dinner-toggle";
+    dinnerToggle.onclick = () => toggleDinner(day, true);
+    dinnerToggle.innerHTML = `<span>+</span> Adicionar jantar`;
+    card.appendChild(dinnerToggle);
+  } else {
+    const dinnerSection = document.createElement("div");
+    dinnerSection.className = "dinner-section";
+
+    const dinnerHeaderRow = document.createElement("div");
+    dinnerHeaderRow.className = "dinner-header-row";
+    dinnerHeaderRow.innerHTML = `
+      <div class="meal-label" style="margin:0; flex:1;">🌙 Jantar</div>
+      <button class="dinner-remove-btn" onclick="confirmClearDinner('${day}')" aria-label="Remover jantar" title="Remover jantar">🗑</button>
+    `;
+    dinnerSection.appendChild(dinnerHeaderRow);
+
+    const dinnerMealSection = document.createElement("div");
+    dinnerMealSection.className = "meal-section";
+    dinnerMealSection.style.paddingTop = "8px";
+
+    const dinnerSlots = dayState.dinner || { protein: null, side: null, veggie: null };
+    dinnerMealSection.appendChild(buildSlotsGrid(day, "dinner", dinnerSlots));
+    dinnerSection.appendChild(dinnerMealSection);
+    card.appendChild(dinnerSection);
+  }
+
+  return card;
+}
+
+function buildSlotsGrid(day, meal, slots) {
+  const grid = document.createElement("div");
+  grid.className = "slots-grid";
+
+  ["protein", "side", "veggie"].forEach(slotKey => {
+    const row = document.createElement("div");
+    row.className = "slot-row";
+
+    const icon = document.createElement("span");
+    icon.className = "slot-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = CONFIG.slotIcons[slotKey];
+    row.appendChild(icon);
+
+    const dishName = slots ? slots[slotKey] : null;
+
+    if (dishName) {
+      const filled = document.createElement("div");
+      filled.className = "slot-filled";
+      filled.innerHTML = `
+        <span class="slot-dish-name">${escapeHtml(dishName)}</span>
+        <button class="slot-remove-btn" onclick="removeSlot('${day}','${meal}','${slotKey}')" aria-label="Remover ${dishName}">✕</button>
+      `;
+      row.appendChild(filled);
+    } else {
+      const btn = document.createElement("button");
+      btn.className = "slot-btn";
+      btn.setAttribute("aria-label", `Adicionar ${CONFIG.slotLabels[slotKey]} para ${meal === "lunch" ? "almoço" : "jantar"} de ${day}`);
+      btn.textContent = `+ ${CONFIG.slotLabels[slotKey]}`;
+      btn.onclick = () => openBottomSheet({ day, meal, slot: slotKey });
+      row.appendChild(btn);
+    }
+
+    grid.appendChild(row);
+  });
+
+  return grid;
+}
+
+function toggleDinner(day, expand) {
+  if (expand) {
+    appState.weekPlan[day].dinnerExpanded = true;
+    appState.weekPlan[day].dinner = { protein: null, side: null, veggie: null };
+  } else {
+    appState.weekPlan[day].dinnerExpanded = false;
+    appState.weekPlan[day].dinner = null;
+  }
+  saveState();
+  refreshDayCard(day);
+}
+
+function refreshDayCard(day) {
+  const container = document.getElementById("planner-days");
+  const oldCard = document.getElementById(`day-card-${day.replace(/[\s-]/g, "_")}`);
+  if (oldCard) {
+    const newCard = buildDayCard(day);
+    // Preserve animation
+    newCard.style.opacity = "1";
+    newCard.style.transform = "none";
+    container.replaceChild(newCard, oldCard);
+  }
+}
+
+function removeSlot(day, meal, slot) {
+  if (meal === "lunch") {
+    appState.weekPlan[day].lunch[slot] = null;
+  } else if (meal === "dinner" && appState.weekPlan[day].dinner) {
+    appState.weekPlan[day].dinner[slot] = null;
+  }
+  saveState();
+  refreshDayCard(day);
+}
+
+// ── BOTTOM SHEET ──────────────────────────────────────────────────────────────
+function openBottomSheet(context) {
+  modalContext = context;
+  const { slot } = context;
+  const category = CONFIG.slotCategoryMap[slot];
+  const dishes = (MEAL_DATA.dishes[category] || []);
+
+  document.getElementById("sheet-title").textContent = `Escolha: ${CONFIG.slotLabels[slot]}`;
+
+  const list = document.getElementById("sheet-list");
+  list.innerHTML = "";
+
+  if (dishes.length === 0) {
+    list.innerHTML = `<div class="shopping-empty">Nenhum prato encontrado para "${category}"</div>`;
+  } else {
+    dishes.forEach(dish => {
+      const card = document.createElement("div");
+      card.className = "sheet-dish-card";
+      card.setAttribute("role", "listitem");
+      card.setAttribute("tabindex", "0");
+
+      const ingredientList = dish.ingredients.map(i => i.item).filter(Boolean).join(", ");
+
+      card.innerHTML = `
+        <div class="sheet-dish-name">${escapeHtml(dish.name)}</div>
+        ${ingredientList ? `<div class="sheet-dish-ingredients">${escapeHtml(ingredientList)}</div>` : ""}
+      `;
+      card.onclick = () => selectDish(dish.name);
+      card.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") selectDish(dish.name); };
+      list.appendChild(card);
+    });
+  }
+
+  document.getElementById("modal-backdrop").classList.add("visible");
+  document.getElementById("bottom-sheet").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeBottomSheet() {
+  document.getElementById("modal-backdrop").classList.remove("visible");
+  document.getElementById("bottom-sheet").classList.remove("open");
+  document.body.style.overflow = "";
+  modalContext = null;
+}
+
+function selectDish(dishName) {
+  if (!modalContext) return;
+  const { day, meal, slot } = modalContext;
+
+  if (meal === "lunch") {
+    appState.weekPlan[day].lunch[slot] = dishName;
+  } else if (meal === "dinner") {
+    if (!appState.weekPlan[day].dinner) {
+      appState.weekPlan[day].dinner = { protein: null, side: null, veggie: null };
+    }
+    appState.weekPlan[day].dinner[slot] = dishName;
+  }
+
+  saveState();
+  closeBottomSheet();
+  refreshDayCard(day);
+}
+
+// ── CONFIRM DIALOG ────────────────────────────────────────────────────────────
+let confirmCallback = null;
+
+function showConfirm(title, text, onConfirm) {
+  document.getElementById("confirm-title").textContent = title;
+  document.getElementById("confirm-text").textContent = text;
+  confirmCallback = onConfirm;
+  document.getElementById("confirm-dialog").classList.add("visible");
+  document.getElementById("confirm-ok-btn").onclick = () => {
+    closeConfirm();
+    if (confirmCallback) confirmCallback();
+  };
+}
+
+function closeConfirm() {
+  document.getElementById("confirm-dialog").classList.remove("visible");
+  confirmCallback = null;
+}
+
+function confirmClearDay(day) {
+  showConfirm(
+    "Limpar dia",
+    `Remover todas as refeições de ${day}?`,
+    () => {
+      appState.weekPlan[day] = {
+        lunch: { protein: null, side: null, veggie: null },
+        dinner: null,
+        dinnerExpanded: false
+      };
+      saveState();
+      refreshDayCard(day);
+    }
+  );
+}
+
+function confirmClearDinner(day) {
+  showConfirm(
+    "Remover jantar",
+    `Remover o jantar de ${day}?`,
+    () => toggleDinner(day, false)
+  );
+}
+
+function confirmNewMenu() {
+  showConfirm(
+    "Novo Cardápio",
+    "Isso irá apagar todo o planejamento semanal e a lista de compras marcada. Continuar?",
+    () => {
+      appState.weekPlan = defaultWeekPlan();
+      appState.shoppingChecked = {};
+      saveState();
+      renderPlanner();
+      showView("planner");
+    }
+  );
+}
+
+// ── SHOPPING LIST RENDER ──────────────────────────────────────────────────────
+function buildShoppingData() {
+  // Map: key (item__store) → { item, store, contexts: [{dishName, dayAbbrev, meal}] }
+  const itemMap = {};
+
+  CONFIG.days.forEach(day => {
+    const abbrev = CONFIG.dayAbbrev[day];
+    const dayState = appState.weekPlan[day];
+
+    const meals = [
+      { mealKey: "lunch", slots: dayState.lunch, mealLabel: "almoço" },
+    ];
+
+    if (dayState.dinnerExpanded && dayState.dinner) {
+      meals.push({ mealKey: "dinner", slots: dayState.dinner, mealLabel: "jantar" });
+    }
+
+    meals.forEach(({ mealKey, slots, mealLabel }) => {
+      if (!slots) return;
+      ["protein", "side", "veggie"].forEach(slotKey => {
+        const dishName = slots[slotKey];
+        if (!dishName) return;
+
+        const category = CONFIG.slotCategoryMap[slotKey];
+        const dishData = (MEAL_DATA.dishes[category] || []).find(d => d.name === dishName);
+        if (!dishData) return;
+
+        dishData.ingredients.forEach(ing => {
+          const item = ing.item.trim();
+          const store = (ing.store || "").trim() || "Outros";
+          if (!item) return;
+
+          // Skip pantry staples — they go to pantry section
+          // (We still list them in the shopping list but won't double-list)
+          const key = `${item}__${store}`;
+          if (!itemMap[key]) {
+            itemMap[key] = { item, store, contexts: [] };
+          }
+
+          // Avoid duplicate contexts
+          const ctxLabel = `${dishName} — ${abbrev}`;
+          if (!itemMap[key].contexts.find(c => c.label === ctxLabel)) {
+            itemMap[key].contexts.push({ label: ctxLabel, dishName, day, abbrev, mealLabel });
+          }
+        });
+      });
+    });
+  });
+
+  // Group by store
+  const storeMap = {};
+  Object.values(itemMap).forEach(entry => {
+    if (!storeMap[entry.store]) storeMap[entry.store] = [];
+    storeMap[entry.store].push(entry);
+  });
+
+  // Sort stores and items within store
+  const sorted = {};
+  Object.keys(storeMap).sort((a, b) => a.localeCompare(b, "pt-BR")).forEach(store => {
+    sorted[store] = storeMap[store].sort((a, b) => a.item.localeCompare(b.item, "pt-BR"));
+  });
+
+  return sorted;
+}
+
+function renderShoppingList() {
+  const container = document.getElementById("shopping-content");
+  container.innerHTML = "";
+
+  // Pantry section
+  const pantryCard = document.createElement("div");
+  pantryCard.className = "section-card";
+  pantryCard.innerHTML = `
+    <div class="section-header pantry-header">
+      <span class="section-icon">🌿</span>
+      <span class="section-header-title">Confere se tem em casa</span>
+    </div>
+    <div class="pantry-items" id="pantry-items-list"></div>
+  `;
+  container.appendChild(pantryCard);
+
+  const pantryList = pantryCard.querySelector("#pantry-items-list");
+  CONFIG.pantryStaples.forEach(item => {
+    const checked = !!appState.pantryChecked[item];
+    const el = document.createElement("label");
+    el.className = `pantry-item${checked ? " checked" : ""}`;
+    el.innerHTML = `
+      <input type="checkbox" ${checked ? "checked" : ""} onchange="togglePantry('${escapeHtml(item)}', this.checked)" aria-label="${escapeHtml(item)}">
+      ${escapeHtml(item)}
+    `;
+    pantryList.appendChild(el);
+  });
+
+  // Shopping list grouped by store
+  const shoppingData = buildShoppingData();
+
+  if (Object.keys(shoppingData).length === 0) {
+    const emptyCard = document.createElement("div");
+    emptyCard.className = "section-card";
+    emptyCard.innerHTML = `
+      <div style="padding:32px 16px; text-align:center;">
+        <div style="margin-bottom:12px;">
+          ${leafSVG(48, "opacity:0.3")}
+        </div>
+        <p style="font-family:'Playfair Display',Georgia,serif; color:var(--fern-green); margin-bottom:6px;">Cardápio vazio</p>
+        <p style="font-size:0.85rem; color:var(--warm-gray);">Adicione refeições ao cardápio para ver a lista de compras.</p>
+      </div>
+    `;
+    container.appendChild(emptyCard);
+    return;
+  }
+
+  Object.entries(shoppingData).forEach(([store, items]) => {
+    const storeIcon = CONFIG.storeIcons[store] || "🛒";
+    const storeCard = document.createElement("div");
+    storeCard.className = "section-card";
+
+    const headerEl = document.createElement("div");
+    headerEl.className = "section-header";
+    headerEl.innerHTML = `
+      <span class="section-icon">${storeIcon}</span>
+      <span class="section-header-title">${escapeHtml(store.toUpperCase())}</span>
+    `;
+    storeCard.appendChild(headerEl);
+
+    const itemsEl = document.createElement("div");
+    itemsEl.className = "store-items";
+
+    items.forEach(entry => {
+      const key = `${entry.item}__${entry.store}`;
+      const checked = !!appState.shoppingChecked[key];
+
+      const itemEl = document.createElement("label");
+      itemEl.className = `shopping-item${checked ? " checked" : ""}`;
+      itemEl.setAttribute("aria-label", entry.item);
+
+      const contextStr = entry.contexts.map(c => c.label).join(", ");
+
+      itemEl.innerHTML = `
+        <input type="checkbox" ${checked ? "checked" : ""} onchange="toggleShoppingItem('${escapeHtml(key)}', this.checked)" aria-label="${escapeHtml(entry.item)}">
+        <div class="item-text">
+          <div class="item-name">${escapeHtml(entry.item)}</div>
+          ${contextStr ? `<div class="item-context">${escapeHtml(contextStr)}</div>` : ""}
+        </div>
+      `;
+      itemsEl.appendChild(itemEl);
+    });
+
+    storeCard.appendChild(itemsEl);
+    container.appendChild(storeCard);
+  });
+}
+
+function togglePantry(item, checked) {
+  appState.pantryChecked[item] = checked;
+  saveState();
+
+  // Update visual
+  const labels = document.querySelectorAll(".pantry-item");
+  labels.forEach(label => {
+    const input = label.querySelector("input");
+    if (input && label.textContent.trim() === item) {
+      label.classList.toggle("checked", checked);
+    }
+  });
+}
+
+function toggleShoppingItem(key, checked) {
+  appState.shoppingChecked[key] = checked;
+  saveState();
+
+  // Update the label visual
+  const labels = document.querySelectorAll(".shopping-item");
+  labels.forEach(label => {
+    const input = label.querySelector("input");
+    // Match by the onchange attribute containing the key
+    if (input && input.getAttribute("onchange") && input.getAttribute("onchange").includes(CSS.escape ? key : key.replace(/"/g, '\\"'))) {
+      label.classList.toggle("checked", checked);
+    }
+  });
+}
+
+// ── UTILITY ───────────────────────────────────────────────────────────────────
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function leafSVG(size = 32, style = "") {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="${style}" aria-hidden="true">
+    <path d="M16 28 C16 28 6 20 7 11 C8 4 16 3 16 3 C16 3 24 4 25 11 C26 20 16 28 16 28Z" fill="#4a7c59"/>
+    <path d="M16 28 L16 6" stroke="#e8ede5" stroke-width="1" stroke-linecap="round"/>
+    <path d="M16 17 Q11 14 9 9" stroke="#e8ede5" stroke-width="0.8" stroke-linecap="round" opacity="0.8"/>
+    <path d="M16 21 Q21 18 23 13" stroke="#e8ede5" stroke-width="0.8" stroke-linecap="round" opacity="0.8"/>
+  </svg>`;
+}
+
+// ── WEEK DATE RANGE ───────────────────────────────────────────────────────────
+function getWeekDateRange() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun
+  const diffToMon = (day === 0) ? -6 : 1 - day;
+  const mon = new Date(now);
+  mon.setDate(now.getDate() + diffToMon);
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+
+  const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const monStr = `${mon.getDate()}`;
+  const sunStr = `${sun.getDate()} ${months[sun.getMonth()]} ${sun.getFullYear()}`;
+  if (mon.getMonth() === sun.getMonth()) {
+    return `${monStr}–${sunStr}`;
+  } else {
+    return `${monStr} ${months[mon.getMonth()]}–${sunStr}`;
+  }
+}
+
+// ── PDF GENERATION ─────────────────────────────────────────────────────────────
+function downloadPDFMenu() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  const dateRange = getWeekDateRange();
+
+  // Title
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(74, 124, 89);
+  doc.text("Cardápio da Semana", 105, 20, { align: "center" });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(138, 133, 120);
+  doc.text(dateRange, 105, 28, { align: "center" });
+
+  // Table rows
+  const tableBody = CONFIG.days.map(day => {
+    const dayState = appState.weekPlan[day];
+
+    const formatMeal = (slots) => {
+      if (!slots) return "—";
+      const parts = [slots.protein, slots.side, slots.veggie].filter(Boolean);
+      return parts.length ? parts.join(" + ") : "—";
+    };
+
+    const lunch = formatMeal(dayState.lunch);
+    let dinner;
+    if (!dayState.dinnerExpanded || !dayState.dinner) {
+      dinner = "Sobra do almoço";
+    } else {
+      dinner = formatMeal(dayState.dinner);
+    }
+
+    return [day, lunch, dinner];
+  });
+
+  doc.autoTable({
+    head: [["Dia", "Almoço", "Jantar"]],
+    body: tableBody,
+    startY: 36,
+    styles: {
+      font: "helvetica",
+      fontSize: 9,
+      cellPadding: 4,
+      overflow: "linebreak",
+      lineColor: [232, 237, 229],
+      lineWidth: 0.3
+    },
+    headStyles: {
+      fillColor: [74, 124, 89],
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+      fontSize: 9
+    },
+    alternateRowStyles: {
+      fillColor: [245, 243, 237]
+    },
+    bodyStyles: {
+      textColor: [44, 44, 44]
+    },
+    columnStyles: {
+      0: { cellWidth: 35, fontStyle: "bold" },
+      1: { cellWidth: 80 },
+      2: { cellWidth: 80 }
+    },
+    margin: { left: 15, right: 15 }
+  });
+
+  doc.save(`cardapio-semana-${dateRange.replace(/[^0-9a-zA-Z]/g, "-")}.pdf`);
+}
+
+function downloadPDFShopping() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  const dateRange = getWeekDateRange();
+
+  // Title
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(74, 124, 89);
+  doc.text("Lista de Compras", 105, 18, { align: "center" });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(138, 133, 120);
+  doc.text(`Semana ${dateRange}`, 105, 25, { align: "center" });
+
+  let y = 34;
+  const pageH = 280;
+  const marginL = 15;
+  const marginR = 15;
+  const pageW = 210 - marginL - marginR;
+
+  // Section helper
+  const addSectionHeader = (title, color) => {
+    if (y > pageH - 20) { doc.addPage(); y = 20; }
+    doc.setFillColor(...color);
+    doc.roundedRect(marginL, y, pageW, 8, 2, 2, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text(title, marginL + 4, y + 5.5);
+    y += 11;
+  };
+
+  const addItem = (text, contextText = "") => {
+    if (y > pageH - 12) { doc.addPage(); y = 20; }
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(44, 44, 44);
+    doc.text("☐ " + text, marginL + 4, y);
+    y += 5;
+    if (contextText) {
+      doc.setFontSize(7.5);
+      doc.setTextColor(138, 133, 120);
+      doc.text(contextText, marginL + 10, y);
+      y += 4.5;
+    }
+    y += 1;
+  };
+
+  // Pantry section
+  addSectionHeader("CONFERE SE TEM EM CASA", [249, 166, 32]);
+  doc.setTextColor(44, 44, 44);
+  doc.setFontSize(8.5);
+  CONFIG.pantryStaples.forEach(item => {
+    if (y > pageH - 12) { doc.addPage(); y = 20; }
+    doc.text("☐ " + item, marginL + 4, y);
+    y += 6;
+  });
+  y += 4;
+
+  // Shopping by store
+  const shoppingData = buildShoppingData();
+  if (Object.keys(shoppingData).length === 0) {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(9);
+    doc.setTextColor(138, 133, 120);
+    doc.text("Nenhum ingrediente no cardápio.", marginL + 4, y);
+  } else {
+    Object.entries(shoppingData).forEach(([store, items]) => {
+      const storeIcon = CONFIG.storeIcons[store] || "🛒";
+      addSectionHeader(`${store.toUpperCase()}`, [74, 124, 89]);
+      items.forEach(entry => {
+        const contextStr = entry.contexts.map(c => c.label).join(", ");
+        addItem(entry.item, contextStr);
+      });
+      y += 2;
+    });
+  }
+
+  doc.save(`lista-compras-${dateRange.replace(/[^0-9a-zA-Z]/g, "-")}.pdf`);
+}
+
+// ── KEYBOARD ACCESSIBILITY ────────────────────────────────────────────────────
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    closeBottomSheet();
+    closeConfirm();
+  }
+});
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+window.addEventListener("DOMContentLoaded", initApp);
+</script>
+</body>
+</html>
